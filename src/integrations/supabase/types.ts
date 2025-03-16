@@ -9,7 +9,51 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      loans: {
+        Row: {
+          created_at: string
+          default_loan_date: string | null
+          id: string
+          is_defaulted: boolean
+          loan_amount: number
+          loan_due_date: string
+          loan_repaid_amount: number | null
+          loan_term: number
+          time_loan_ended: string | null
+          time_loan_started: string
+          user_wallet: string
+          version: string | null
+        }
+        Insert: {
+          created_at?: string
+          default_loan_date?: string | null
+          id?: string
+          is_defaulted?: boolean
+          loan_amount: number
+          loan_due_date: string
+          loan_repaid_amount?: number | null
+          loan_term: number
+          time_loan_ended?: string | null
+          time_loan_started: string
+          user_wallet: string
+          version?: string | null
+        }
+        Update: {
+          created_at?: string
+          default_loan_date?: string | null
+          id?: string
+          is_defaulted?: boolean
+          loan_amount?: number
+          loan_due_date?: string
+          loan_repaid_amount?: number | null
+          loan_term?: number
+          time_loan_ended?: string | null
+          time_loan_started?: string
+          user_wallet?: string
+          version?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

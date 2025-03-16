@@ -1,12 +1,15 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Activity, Clock, DollarSign } from 'lucide-react';
+import { Activity, Clock, DollarSign, RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
 import KPICard from './KPICard';
 import LoanBreakdown from './LoanBreakdown';
 import UpcomingLoans from './UpcomingLoans';
 import LoanCharts from './LoanCharts';
+import { Button } from '@/components/ui/button';
 import { LoanData, LoanMetrics, DueDateGroup } from '@/utils/types';
+import { fetchLoansFromDatabase } from '@/utils/csvParser';
 import { 
   calculateLoanMetrics,
   generateStatusChartData,
@@ -25,14 +28,23 @@ const Dashboard = ({ data }: DashboardProps) => {
   const [statusChartData, setStatusChartData] = useState([]);
   const [amountChartData, setAmountChartData] = useState({ oneDollar: [], tenDollar: [] });
   const [isVisible, setIsVisible] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     if (data.length > 0) {
+      calculateAllMetrics(data);
+    } else {
+      setIsVisible(false);
+    }
+  }, [data]);
+
+  const calculateAllMetrics = (loanData: LoanData[]) => {
+    try {
       // Calculate all metrics and chart data
-      const calculatedMetrics = calculateLoanMetrics(data);
+      const calculatedMetrics = calculateLoanMetrics(loanData);
       setMetrics(calculatedMetrics);
       
-      const calculatedDueDateGroups = groupLoansByDueDate(data);
+      const calculatedDueDateGroups = groupLoansByDueDate(loanData);
       setDueDateGroups(calculatedDueDateGroups);
       
       const calculatedStatusChartData = generateStatusChartData(calculatedMetrics);
@@ -43,13 +55,50 @@ const Dashboard = ({ data }: DashboardProps) => {
       
       // Trigger animation after a small delay
       setTimeout(() => setIsVisible(true), 100);
-    } else {
-      setIsVisible(false);
+    } catch (error) {
+      console.error("Error calculating metrics:", error);
+      toast.error("Error calculating loan metrics");
     }
-  }, [data]);
+  };
+
+  const handleRefresh = async () => {
+    try {
+      setIsRefreshing(true);
+      const freshData = await fetchLoansFromDatabase();
+      
+      if (freshData.length > 0) {
+        calculateAllMetrics(freshData);
+        toast.success("Dashboard data refreshed successfully");
+      } else {
+        toast.info("No loan data found in the database");
+      }
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+      toast.error("Failed to refresh dashboard data");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   if (!metrics || data.length === 0) {
-    return null;
+    return (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground mb-4">No loan data available to display.</p>
+        <Button onClick={handleRefresh} disabled={isRefreshing}>
+          {isRefreshing ? (
+            <>
+              <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+              Refreshing...
+            </>
+          ) : (
+            <>
+              <RefreshCw className="w-4 h-4 mr-2" />
+              Refresh Data
+            </>
+          )}
+        </Button>
+      </div>
+    );
   }
 
   return (
@@ -61,14 +110,35 @@ const Dashboard = ({ data }: DashboardProps) => {
           exit={{ opacity: 0 }}
           className="w-full"
         >
-          <motion.h1
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="text-3xl font-bold mb-8 text-center"
-          >
-            Loan Analytics Dashboard
-          </motion.h1>
+          <div className="flex justify-between items-center mb-8">
+            <motion.h1
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+              className="text-3xl font-bold"
+            >
+              Loan Analytics Dashboard
+            </motion.h1>
+            
+            <Button 
+              onClick={handleRefresh} 
+              variant="outline" 
+              size="sm"
+              disabled={isRefreshing}
+            >
+              {isRefreshing ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Refreshing...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Refresh Data
+                </>
+              )}
+            </Button>
+          </div>
           
           <motion.div 
             initial={{ opacity: 0, y: 20 }}

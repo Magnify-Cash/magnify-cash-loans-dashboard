@@ -1,12 +1,13 @@
 
 import { LoanData } from "./types";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 export const parseCSV = async (file: File): Promise<LoanData[]> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     
-    reader.onload = (event) => {
+    reader.onload = async (event) => {
       try {
         const csvText = event.target?.result as string;
         if (!csvText) {
@@ -49,7 +50,18 @@ export const parseCSV = async (file: File): Promise<LoanData[]> => {
           loans.push(loan as LoanData);
         }
         
-        console.log("Parsed loans:", loans);
+        // Store loans in Supabase
+        const { error } = await storeLoansInDatabase(loans);
+        
+        if (error) {
+          console.error("Error storing loans in database:", error);
+          toast.error("Error storing loans in database");
+          reject(error);
+          return;
+        }
+        
+        toast.success(`Successfully stored ${loans.length} loans in the database`);
+        console.log("Parsed and stored loans:", loans);
         resolve(loans);
       } catch (error) {
         console.error("Error parsing CSV:", error);
@@ -66,4 +78,80 @@ export const parseCSV = async (file: File): Promise<LoanData[]> => {
     
     reader.readAsText(file);
   });
+};
+
+// Function to store loans in Supabase
+const storeLoansInDatabase = async (loans: LoanData[]) => {
+  // First, clear existing loans to avoid duplicates
+  const { error: deleteError } = await supabase
+    .from('loans')
+    .delete()
+    .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all rows
+
+  if (deleteError) {
+    console.error("Error clearing existing loans:", deleteError);
+    return { error: deleteError };
+  }
+
+  // Map loan data to match database schema
+  const loansToInsert = loans.map(loan => ({
+    user_wallet: loan.user_wallet,
+    loan_amount: loan.loan_amount,
+    loan_repaid_amount: loan.loan_repaid_amount,
+    loan_term: loan.loan_term,
+    time_loan_started: loan.time_loan_started,
+    time_loan_ended: loan.time_loan_ended,
+    loan_due_date: loan.loan_due_date,
+    default_loan_date: loan.default_loan_date,
+    is_defaulted: loan.is_defaulted,
+    version: loan.version
+  }));
+
+  // Insert loans in batches to avoid request size limitations
+  const batchSize = 100;
+  const batches = [];
+  
+  for (let i = 0; i < loansToInsert.length; i += batchSize) {
+    batches.push(loansToInsert.slice(i, i + batchSize));
+  }
+
+  for (const batch of batches) {
+    const { error } = await supabase
+      .from('loans')
+      .insert(batch);
+    
+    if (error) {
+      console.error("Error inserting loan batch:", error);
+      return { error };
+    }
+  }
+
+  return { error: null };
+};
+
+// Function to fetch all loans from Supabase
+export const fetchLoansFromDatabase = async (): Promise<LoanData[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('loans')
+      .select('*');
+      
+    if (error) {
+      console.error("Error fetching loans:", error);
+      toast.error("Error fetching loans from database");
+      throw error;
+    }
+    
+    if (!data || data.length === 0) {
+      toast.info("No loans found in the database");
+      return [];
+    }
+    
+    console.log("Fetched loans from database:", data);
+    return data as LoanData[];
+  } catch (error) {
+    console.error("Error in fetchLoansFromDatabase:", error);
+    toast.error("Failed to fetch loan data");
+    throw error;
+  }
 };

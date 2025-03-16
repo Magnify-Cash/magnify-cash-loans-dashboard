@@ -1,13 +1,36 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { Loader2 } from 'lucide-react';
 import CSVUploader from '@/components/CSVUploader';
 import Dashboard from '@/components/Dashboard';
 import { LoanData } from '@/utils/types';
+import { fetchLoansFromDatabase } from '@/utils/csvParser';
+import { toast } from 'sonner';
 
 const Index = () => {
   const [loanData, setLoanData] = useState<LoanData[]>([]);
   const [dataUploaded, setDataUploaded] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch loan data from database on component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const data = await fetchLoansFromDatabase();
+        setLoanData(data);
+        setDataUploaded(data.length > 0);
+      } catch (error) {
+        console.error("Error fetching loan data:", error);
+        toast.error("Failed to fetch loan data");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const handleDataLoaded = (data: LoanData[]) => {
     setLoanData(data);
@@ -30,7 +53,12 @@ const Index = () => {
       </header>
 
       <main className="flex-1 container mx-auto px-4 py-8">
-        {!dataUploaded ? (
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center h-64">
+            <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
+            <p className="text-muted-foreground">Loading loan data...</p>
+          </div>
+        ) : !dataUploaded ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
