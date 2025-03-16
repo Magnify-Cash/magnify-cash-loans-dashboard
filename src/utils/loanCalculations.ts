@@ -31,6 +31,7 @@ export function calculateLoanMetrics(loans: LoanData[]): LoanMetrics {
     // Parse the due date
     const dueDate = new Date(loan.loan_due_date);
     const isDueDateInFuture = !isNaN(dueDate.getTime()) && dueDate > today;
+    const isMissingRepaidAmount = loan.loan_repaid_amount === undefined || loan.loan_repaid_amount === null;
     
     // Count defaulted loans
     if (loan.is_defaulted || loan.default_loan_date) {
@@ -38,7 +39,8 @@ export function calculateLoanMetrics(loans: LoanData[]): LoanMetrics {
     }
     
     // Count in-progress loans
-    if (!loan.is_defaulted && loan.loan_repaid_amount < loan.loan_amount && isDueDateInFuture) {
+    if (!loan.is_defaulted && isDueDateInFuture && 
+        (isMissingRepaidAmount || loan.loan_repaid_amount < loan.loan_amount)) {
       metrics.totalInProgress++;
     }
     
@@ -48,9 +50,9 @@ export function calculateLoanMetrics(loans: LoanData[]): LoanMetrics {
       
       if (loan.is_defaulted) {
         metrics.oneDollarLoans.defaulted++;
-      } else if (loan.loan_repaid_amount >= 1.025) {
+      } else if (!isMissingRepaidAmount && loan.loan_repaid_amount >= 1.025) {
         metrics.oneDollarLoans.repaid++;
-      } else if (loan.loan_repaid_amount < 1.025 && isDueDateInFuture) {
+      } else if ((isMissingRepaidAmount || loan.loan_repaid_amount < 1.025) && isDueDateInFuture) {
         metrics.oneDollarLoans.inProgress++;
       }
     }
@@ -61,9 +63,9 @@ export function calculateLoanMetrics(loans: LoanData[]): LoanMetrics {
       
       if (loan.is_defaulted) {
         metrics.tenDollarLoans.defaulted++;
-      } else if (loan.loan_repaid_amount >= 10.15) {
+      } else if (!isMissingRepaidAmount && loan.loan_repaid_amount >= 10.15) {
         metrics.tenDollarLoans.repaid++;
-      } else if (loan.loan_repaid_amount < 10.15 && isDueDateInFuture) {
+      } else if ((isMissingRepaidAmount || loan.loan_repaid_amount < 10.15) && isDueDateInFuture) {
         metrics.tenDollarLoans.inProgress++;
       }
     }
@@ -121,8 +123,9 @@ export function groupLoansByDueDate(loans: LoanData[]): DueDateGroup[] {
     
     const dueDate = new Date(loan.loan_due_date);
     const isDueDateInFuture = !isNaN(dueDate.getTime()) && dueDate >= today;
+    const isMissingRepaidAmount = loan.loan_repaid_amount === undefined || loan.loan_repaid_amount === null;
     
-    return loan.loan_repaid_amount < loan.loan_amount && isDueDateInFuture;
+    return isDueDateInFuture && (isMissingRepaidAmount || loan.loan_repaid_amount < loan.loan_amount);
   });
   
   activeLoans.forEach(loan => {

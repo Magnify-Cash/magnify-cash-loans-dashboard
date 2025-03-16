@@ -30,12 +30,15 @@ export const parseCSV = async (file: File): Promise<LoanData[]> => {
           
           // Map the values to the corresponding headers
           headers.forEach((header, index) => {
-            if (header === 'loan_amount' || header === 'loan_repaid_amount' || header === 'loan_term') {
-              loan[header] = parseFloat(values[index]);
+            if (header === 'loan_amount' || header === 'loan_term') {
+              loan[header] = parseFloat(values[index]) || 0;
+            } else if (header === 'loan_repaid_amount') {
+              // Handle potentially missing loan_repaid_amount
+              loan[header] = values[index] ? parseFloat(values[index]) : null;
             } else if (header === 'is_defaulted') {
-              loan[header] = values[index].toLowerCase() === 'true';
+              loan[header] = values[index]?.toLowerCase() === 'true';
             } else {
-              loan[header] = values[index];
+              loan[header] = values[index] || null;
             }
           });
           

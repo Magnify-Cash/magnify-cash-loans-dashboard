@@ -2,7 +2,7 @@
 export interface LoanData {
   user_wallet: string;
   loan_amount: number;
-  loan_repaid_amount: number;
+  loan_repaid_amount?: number | null;
   loan_term: number;
   time_loan_started: string;
   time_loan_ended: string | null;
