@@ -1,11 +1,12 @@
 
 import { useState, useRef, DragEvent, ChangeEvent } from 'react';
 import { toast } from 'sonner';
-import { Upload, File, Loader2 } from 'lucide-react';
+import { Upload, File, Loader2, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { parseCSV } from '@/utils/csvParser';
 import { LoanData } from '@/utils/types';
 import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 interface CSVUploaderProps {
   onDataLoaded: (data: LoanData[]) => void;
@@ -18,6 +19,7 @@ const CSVUploader = ({ onDataLoaded, onProgress }: CSVUploaderProps) => {
   const [fileName, setFileName] = useState<string | null>(null);
   const [processingStep, setProcessingStep] = useState<string>('');
   const [progress, setProgress] = useState(0);
+  const [validationError, setValidationError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Update progress both internally and notify parent
@@ -59,6 +61,16 @@ const CSVUploader = ({ onDataLoaded, onProgress }: CSVUploaderProps) => {
     }
   };
 
+  const resetState = () => {
+    setFileName(null);
+    setIsLoading(false);
+    setValidationError(null);
+    updateProgress(0, '');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const processFile = async (file: File) => {
     // Check file extension
     if (!file.name.endsWith('.csv')) {
@@ -66,6 +78,9 @@ const CSVUploader = ({ onDataLoaded, onProgress }: CSVUploaderProps) => {
       return;
     }
 
+    // Reset previous errors
+    setValidationError(null);
+    
     // Reset state
     setIsLoading(true);
     setFileName(file.name);
@@ -102,6 +117,7 @@ const CSVUploader = ({ onDataLoaded, onProgress }: CSVUploaderProps) => {
         toast.error('No valid loan data found in the CSV file');
         setIsLoading(false);
         updateProgress(0, '');
+        setValidationError('The CSV file contains no valid loan data. Please check the file format and try again.');
       }
     } catch (error) {
       console.error('Error processing CSV:', error);
@@ -111,22 +127,31 @@ const CSVUploader = ({ onDataLoaded, onProgress }: CSVUploaderProps) => {
         if (error.message.includes('timed out')) {
           errorMessage = 'Processing timed out. Try with a smaller file or try again later.';
         } else if (error.message.includes('required fields')) {
-          errorMessage = 'Some rows have missing required fields. Please check your CSV file.';
+          errorMessage = 'Some rows have missing required fields. Please check your CSV file and ensure all rows have the required user_wallet field.';
         }
       }
       
       toast.error(errorMessage);
       setIsLoading(false);
       updateProgress(0, '');
+      setValidationError(errorMessage);
     }
   };
 
   return (
     <div className="w-full max-w-2xl mx-auto">
+      {validationError && (
+        <Alert variant="destructive" className="mb-4">
+          <AlertCircle className="h-4 w-4" />
+          <AlertTitle>Error Processing CSV</AlertTitle>
+          <AlertDescription>{validationError}</AlertDescription>
+        </Alert>
+      )}
+      
       <div
         className={`border-2 border-dashed border-primary/30 rounded-lg p-12 transition-all duration-300 ${
           isDragging ? 'bg-primary/5 border-primary/50' : 'bg-background hover:bg-primary/5'
-        } file-drop-area`}
+        } ${validationError ? 'border-destructive/30' : ''} file-drop-area`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -178,20 +203,28 @@ const CSVUploader = ({ onDataLoaded, onProgress }: CSVUploaderProps) => {
               )}
               
               <Button 
-                onClick={handleButtonClick}
+                onClick={validationError ? resetState : handleButtonClick}
                 variant="outline"
                 className="relative overflow-hidden group"
                 disabled={isLoading}
               >
                 <span className="absolute inset-0 w-full h-full transition-all duration-300 ease-out transform translate-x-full bg-primary group-hover:translate-x-0"></span>
                 <span className="relative transition-colors duration-300 ease-out group-hover:text-white">
-                  {fileName ? 'Upload another file' : 'Select CSV file'}
+                  {validationError ? 'Try Again' : fileName ? 'Upload another file' : 'Select CSV file'}
                 </span>
               </Button>
             </>
           )}
         </div>
       </div>
+      
+      {!isLoading && !validationError && fileName && (
+        <div className="mt-4 flex justify-center">
+          <p className="text-sm text-amber-600">
+            Your file has been uploaded. Waiting for processing to complete...
+          </p>
+        </div>
+      )}
     </div>
   );
 };

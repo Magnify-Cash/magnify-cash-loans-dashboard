@@ -1,12 +1,13 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
 import CSVUploader from '@/components/CSVUploader';
 import Dashboard from '@/components/Dashboard';
 import { LoanData } from '@/utils/types';
 import { fetchLoansFromDatabase } from '@/utils/csvParser';
 import { toast } from 'sonner';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 const Index = () => {
   const [loanData, setLoanData] = useState<LoanData[]>([]);
@@ -15,12 +16,14 @@ const Index = () => {
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [processingStatus, setProcessingStatus] = useState('');
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   // Fetch loan data from database on component mount
   useEffect(() => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
+        setLoadError(null);
         const data = await fetchLoansFromDatabase();
         console.log("Initial data fetch complete:", data.length, "loans");
         setLoanData(data);
@@ -33,6 +36,7 @@ const Index = () => {
       } catch (error) {
         console.error("Error fetching loan data:", error);
         toast.error("Failed to fetch loan data");
+        setLoadError("Failed to load data from the database. Please try again later.");
       } finally {
         setIsLoading(false);
         setInitialLoadComplete(true);
@@ -57,6 +61,10 @@ const Index = () => {
     setProcessingStatus(status);
   };
 
+  const resetToUploader = () => {
+    setDataUploaded(false);
+  };
+
   return (
     <div className="min-h-screen flex flex-col pb-16">
       <header className="w-full bg-gradient-to-r from-primary/5 to-primary/10 backdrop-blur-sm">
@@ -77,6 +85,19 @@ const Index = () => {
           <div className="flex flex-col items-center justify-center h-64">
             <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
             <p className="text-muted-foreground">Loading loan data...</p>
+          </div>
+        ) : loadError ? (
+          <div className="max-w-3xl mx-auto mt-12">
+            <Alert variant="destructive" className="mb-8">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{loadError}</AlertDescription>
+            </Alert>
+            <div className="text-center">
+              <CSVUploader 
+                onDataLoaded={handleDataLoaded} 
+                onProgress={handleUploadProgress}
+              />
+            </div>
           </div>
         ) : !dataUploaded && initialLoadComplete ? (
           <motion.div
@@ -150,7 +171,7 @@ const Index = () => {
       {dataUploaded && (
         <div className="container mx-auto px-4 py-4 flex justify-center">
           <button
-            onClick={() => setDataUploaded(false)}
+            onClick={resetToUploader}
             className="text-sm text-primary hover:text-primary/80 underline transition-colors duration-200"
           >
             Upload another CSV file

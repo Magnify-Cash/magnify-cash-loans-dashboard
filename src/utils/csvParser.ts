@@ -29,13 +29,27 @@ export const parseCSV = async (
         const lines = csvText.split(/\r\n|\n/);
         const headers = lines[0].split(',').map(header => header.trim());
         
+        // Validate required headers
+        const requiredHeaders = ['user_wallet', 'loan_amount', 'loan_term', 'loan_due_date'];
+        const missingHeaders = requiredHeaders.filter(header => !headers.includes(header));
+        
+        if (missingHeaders.length > 0) {
+          const errorMsg = `CSV is missing required headers: ${missingHeaders.join(', ')}`;
+          toast.error(errorMsg);
+          reject(new Error(errorMsg));
+          return;
+        }
+        
         // Progress calculation variables
         const totalLines = lines.length - 1; // Minus header
         let processedLines = 0;
+        let invalidRows = 0;
+        let validRows = 0;
         
         // Process data rows
         const loans: LoanData[] = [];
-        let validLoans = true;
+        let hasValidationErrors = false;
+        let invalidRowNumbers: number[] = [];
         
         progressCallback?.(20, "Validating loan data...");
         
@@ -66,10 +80,13 @@ export const parseCSV = async (
           // Validate required fields
           if (!loan.user_wallet) {
             console.error(`Row ${i} is missing required user_wallet field`);
-            toast.error(`Row ${i} is missing required user_wallet field`);
-            validLoans = false;
+            hasValidationErrors = true;
+            invalidRowNumbers.push(i);
+            invalidRows++;
+            continue; // Skip invalid rows
           }
           
+          validRows++;
           loans.push(loan as LoanData);
           
           // Update progress periodically (every 5% or at least every 100 rows)
@@ -77,19 +94,33 @@ export const parseCSV = async (
           if (processedLines % Math.max(1, Math.floor(totalLines / 20)) === 0 || 
               processedLines === totalLines) {
             const percent = Math.min(20 + Math.floor((processedLines / totalLines) * 30), 50);
-            progressCallback?.(percent, `Processed ${processedLines}/${totalLines} loans...`);
+            progressCallback?.(percent, `Processed ${processedLines}/${totalLines} rows (${validRows} valid, ${invalidRows} invalid)...`);
           }
         }
         
-        if (!validLoans) {
-          reject(new Error("Some rows have missing required fields"));
-          return;
+        // If we have no valid loans but we have validation errors, reject with specific message
+        if (loans.length === 0) {
+          if (hasValidationErrors) {
+            const errorMsg = `No valid loan data found. ${invalidRows} rows had validation errors.`;
+            console.error(errorMsg);
+            if (invalidRowNumbers.length > 0) {
+              console.error(`Invalid rows: ${invalidRowNumbers.slice(0, 10).join(', ')}${
+                invalidRowNumbers.length > 10 ? ` and ${invalidRowNumbers.length - 10} more` : ''
+              }`);
+            }
+            reject(new Error(errorMsg));
+            return;
+          } else {
+            const errorMsg = "No loan data found in CSV file";
+            toast.error(errorMsg);
+            reject(new Error(errorMsg));
+            return;
+          }
         }
         
-        if (loans.length === 0) {
-          toast.error("No valid loan data found in CSV");
-          reject(new Error("No valid loan data found in CSV"));
-          return;
+        // If we have some valid data but also validation errors, continue with warning
+        if (hasValidationErrors && loans.length > 0) {
+          toast.warning(`${invalidRows} rows had validation errors and were skipped.`);
         }
         
         console.log("Parsed loan data:", loans.length, "loans");
