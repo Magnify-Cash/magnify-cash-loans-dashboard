@@ -7,6 +7,7 @@ import KPICard from './KPICard';
 import LoanBreakdown from './LoanBreakdown';
 import UpcomingLoans from './UpcomingLoans';
 import LoanCharts from './LoanCharts';
+import FileUploadBanner from './FileUploadBanner';
 import { Button } from '@/components/ui/button';
 import { LoanData, LoanMetrics, DueDateGroup } from '@/utils/types';
 import { fetchLoansFromDatabase } from '@/utils/csvParser';
@@ -110,7 +111,7 @@ const Dashboard = ({ data }: DashboardProps) => {
           exit={{ opacity: 0 }}
           className="w-full"
         >
-          <div className="flex justify-between items-center mb-8">
+          <div className="flex justify-between items-center mb-4">
             <motion.h1
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -139,6 +140,9 @@ const Dashboard = ({ data }: DashboardProps) => {
               )}
             </Button>
           </div>
+          
+          {/* File Upload Banner */}
+          <FileUploadBanner />
           
           <motion.div 
             initial={{ opacity: 0, y: 20 }}

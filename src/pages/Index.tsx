@@ -20,6 +20,7 @@ const Index = () => {
         setIsLoading(true);
         const data = await fetchLoansFromDatabase();
         setLoanData(data);
+        // Auto-transition to dashboard if we have data
         setDataUploaded(data.length > 0);
       } catch (error) {
         console.error("Error fetching loan data:", error);
@@ -34,6 +35,7 @@ const Index = () => {
 
   const handleDataLoaded = (data: LoanData[]) => {
     console.log("Data loaded, transitioning to dashboard", data.length);
+    // Immediately show the dashboard with the new data
     setLoanData(data);
     setDataUploaded(true);
   };

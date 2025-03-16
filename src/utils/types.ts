@@ -10,6 +10,7 @@ export interface LoanData {
   default_loan_date: string | null;
   is_defaulted: boolean;
   version: string;
+  file_upload_id?: string | null;
 }
 
 export interface LoanMetrics {
@@ -45,4 +46,11 @@ export interface ChartData {
   name: string;
   value: number;
   color: string;
+}
+
+export interface FileUpload {
+  id: string;
+  file_name: string;
+  upload_date: string;
+  record_count: number;
 }

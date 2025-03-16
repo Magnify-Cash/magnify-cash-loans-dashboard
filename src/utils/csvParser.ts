@@ -1,5 +1,5 @@
 
-import { LoanData } from "./types";
+import { LoanData, FileUpload } from "./types";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -52,8 +52,18 @@ export const parseCSV = async (file: File): Promise<LoanData[]> => {
         
         console.log("Parsed loan data:", loans);
         
-        // Store loans in Supabase
-        const { error } = await storeLoansInDatabase(loans);
+        // Record the file upload and store loan data
+        const { data: fileUpload, error: fileUploadError } = await storeFileUpload(file.name, loans.length);
+        
+        if (fileUploadError) {
+          console.error("Error storing file upload info:", fileUploadError);
+          toast.error("Error storing file upload information");
+          reject(fileUploadError);
+          return;
+        }
+        
+        // Store loans in Supabase with file upload ID
+        const { error } = await storeLoansInDatabase(loans, fileUpload.id);
         
         if (error) {
           console.error("Error storing loans in database:", error);
@@ -64,7 +74,14 @@ export const parseCSV = async (file: File): Promise<LoanData[]> => {
         
         toast.success(`Successfully processed ${loans.length} loans`);
         console.log("Parsed and stored loans:", loans);
-        resolve(loans);
+        
+        // Return the parsed data with file upload ID
+        const loansWithFileId = loans.map(loan => ({
+          ...loan,
+          file_upload_id: fileUpload.id
+        }));
+        
+        resolve(loansWithFileId);
       } catch (error) {
         console.error("Error parsing CSV:", error);
         toast.error("Error parsing CSV file");
@@ -82,21 +99,24 @@ export const parseCSV = async (file: File): Promise<LoanData[]> => {
   });
 };
 
-// Function to store loans in Supabase
-const storeLoansInDatabase = async (loans: LoanData[]) => {
-  // First, clear existing loans to avoid duplicates
-  const { error: deleteError } = await supabase
-    .from('loans')
-    .delete()
-    .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all rows
+// Function to store file upload information
+const storeFileUpload = async (fileName: string, recordCount: number): Promise<{ data: FileUpload, error: any }> => {
+  const { data, error } = await supabase
+    .from('file_uploads')
+    .insert({
+      file_name: fileName,
+      record_count: recordCount
+    })
+    .select()
+    .single();
+  
+  return { data, error };
+};
 
-  if (deleteError) {
-    console.error("Error clearing existing loans:", deleteError);
-    return { error: deleteError };
-  }
-
+// Function to store loans in Supabase with update/insert logic
+const storeLoansInDatabase = async (loans: LoanData[], fileUploadId: string) => {
   // Map loan data to match database schema
-  const loansToInsert = loans.map(loan => ({
+  const loansToUpsert = loans.map(loan => ({
     user_wallet: loan.user_wallet,
     loan_amount: loan.loan_amount,
     loan_repaid_amount: loan.loan_repaid_amount,
@@ -106,29 +126,67 @@ const storeLoansInDatabase = async (loans: LoanData[]) => {
     loan_due_date: loan.loan_due_date,
     default_loan_date: loan.default_loan_date,
     is_defaulted: loan.is_defaulted,
-    version: loan.version
+    version: loan.version,
+    file_upload_id: fileUploadId
   }));
 
-  // Insert loans in batches to avoid request size limitations
+  // Process loans in batches to avoid request size limitations
   const batchSize = 100;
   const batches = [];
   
-  for (let i = 0; i < loansToInsert.length; i += batchSize) {
-    batches.push(loansToInsert.slice(i, i + batchSize));
+  for (let i = 0; i < loansToUpsert.length; i += batchSize) {
+    batches.push(loansToUpsert.slice(i, i + batchSize));
   }
+
+  let error = null;
 
   for (const batch of batches) {
-    const { error } = await supabase
-      .from('loans')
-      .insert(batch);
-    
-    if (error) {
-      console.error("Error inserting loan batch:", error);
-      return { error };
+    // For each loan in the batch, check if it already exists
+    for (const loan of batch) {
+      const { data: existingLoan } = await supabase
+        .from('loans')
+        .select('id')
+        .eq('user_wallet', loan.user_wallet)
+        .eq('loan_amount', loan.loan_amount)
+        .eq('loan_due_date', loan.loan_due_date)
+        .maybeSingle();
+      
+      if (existingLoan) {
+        // Update existing loan
+        const { error: updateError } = await supabase
+          .from('loans')
+          .update({
+            loan_repaid_amount: loan.loan_repaid_amount,
+            time_loan_ended: loan.time_loan_ended,
+            default_loan_date: loan.default_loan_date,
+            is_defaulted: loan.is_defaulted,
+            file_upload_id: loan.file_upload_id
+          })
+          .eq('id', existingLoan.id);
+        
+        if (updateError) {
+          console.error("Error updating existing loan:", updateError);
+          error = updateError;
+          break;
+        }
+      } else {
+        // Insert new loan
+        const { error: insertError } = await supabase
+          .from('loans')
+          .insert(loan);
+        
+        if (insertError) {
+          console.error("Error inserting new loan:", insertError);
+          error = insertError;
+          break;
+        }
+      }
     }
+    
+    if (error) break;
   }
 
-  return { error: null };
+  return { error };
 };
 
 // Function to fetch all loans from Supabase
@@ -136,7 +194,8 @@ export const fetchLoansFromDatabase = async (): Promise<LoanData[]> => {
   try {
     const { data, error } = await supabase
       .from('loans')
-      .select('*');
+      .select('*')
+      .order('loan_due_date', { ascending: true });
       
     if (error) {
       console.error("Error fetching loans:", error);
@@ -155,5 +214,27 @@ export const fetchLoansFromDatabase = async (): Promise<LoanData[]> => {
     console.error("Error in fetchLoansFromDatabase:", error);
     toast.error("Failed to fetch loan data");
     throw error;
+  }
+};
+
+// Function to fetch the latest file upload
+export const fetchLatestFileUpload = async (): Promise<FileUpload | null> => {
+  try {
+    const { data, error } = await supabase
+      .from('file_uploads')
+      .select('*')
+      .order('upload_date', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    
+    if (error) {
+      console.error("Error fetching latest file upload:", error);
+      return null;
+    }
+    
+    return data as FileUpload;
+  } catch (error) {
+    console.error("Error in fetchLatestFileUpload:", error);
+    return null;
   }
 };

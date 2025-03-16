@@ -9,10 +9,32 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      file_uploads: {
+        Row: {
+          file_name: string
+          id: string
+          record_count: number
+          upload_date: string
+        }
+        Insert: {
+          file_name: string
+          id?: string
+          record_count?: number
+          upload_date?: string
+        }
+        Update: {
+          file_name?: string
+          id?: string
+          record_count?: number
+          upload_date?: string
+        }
+        Relationships: []
+      }
       loans: {
         Row: {
           created_at: string
           default_loan_date: string | null
+          file_upload_id: string | null
           id: string
           is_defaulted: boolean
           loan_amount: number
@@ -27,6 +49,7 @@ export type Database = {
         Insert: {
           created_at?: string
           default_loan_date?: string | null
+          file_upload_id?: string | null
           id?: string
           is_defaulted?: boolean
           loan_amount: number
@@ -41,6 +64,7 @@ export type Database = {
         Update: {
           created_at?: string
           default_loan_date?: string | null
+          file_upload_id?: string | null
           id?: string
           is_defaulted?: boolean
           loan_amount?: number
@@ -52,7 +76,15 @@ export type Database = {
           user_wallet?: string
           version?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "loans_file_upload_id_fkey"
+            columns: ["file_upload_id"]
+            isOneToOne: false
+            referencedRelation: "file_uploads"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
