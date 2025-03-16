@@ -1,12 +1,18 @@
 
 import { useState, useRef, DragEvent, ChangeEvent } from 'react';
 import { toast } from 'sonner';
-import { Upload, File, Loader2, AlertCircle } from 'lucide-react';
+import { Upload, File, Loader2, AlertCircle, HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { parseCSV } from '@/utils/csvParser';
 import { LoanData } from '@/utils/types';
 import { Progress } from '@/components/ui/progress';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface CSVUploaderProps {
   onDataLoaded: (data: LoanData[]) => void;
@@ -127,7 +133,9 @@ const CSVUploader = ({ onDataLoaded, onProgress }: CSVUploaderProps) => {
         if (error.message.includes('timed out')) {
           errorMessage = 'Processing timed out. Try with a smaller file or try again later.';
         } else if (error.message.includes('required fields')) {
-          errorMessage = 'Some rows have missing required fields. Please check your CSV file and ensure all rows have the required user_wallet field.';
+          errorMessage = 'Some rows have missing required fields. Please check your CSV file and ensure all rows have the required fields.';
+        } else if (error.message.includes('required headers')) {
+          errorMessage = error.message; // Use the exact error message for header validation issues
         }
       }
       
@@ -225,6 +233,43 @@ const CSVUploader = ({ onDataLoaded, onProgress }: CSVUploaderProps) => {
           </p>
         </div>
       )}
+
+      <div className="mt-6 bg-muted/50 p-4 rounded-lg border border-border">
+        <div className="flex justify-between items-center mb-2">
+          <h4 className="text-sm font-medium">Required CSV Format</h4>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div className="cursor-help">
+                  <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-sm">
+                <p>Your CSV file must include these columns with exact header names. Additional columns are allowed but will be ignored.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+        
+        <div className="flex gap-1 flex-wrap mt-2">
+          {['user_wallet', 'loan_amount', 'loan_term', 'loan_due_date'].map((field) => (
+            <span key={field} className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary">
+              {field}
+            </span>
+          ))}
+        </div>
+        
+        <p className="text-xs text-muted-foreground mt-2">
+          Additional recommended columns: loan_repaid_amount, time_loan_started, time_loan_ended, default_loan_date, is_defaulted, version
+        </p>
+
+        <div className="mt-3 text-xs text-muted-foreground">
+          <strong>Example CSV first line:</strong><br />
+          <code className="font-mono bg-muted p-1 text-[10px] block mt-1 rounded-sm overflow-x-auto whitespace-nowrap">
+            user_wallet,loan_amount,loan_term,loan_due_date,loan_repaid_amount,time_loan_started,time_loan_ended,default_loan_date,is_defaulted,version
+          </code>
+        </div>
+      </div>
     </div>
   );
 };

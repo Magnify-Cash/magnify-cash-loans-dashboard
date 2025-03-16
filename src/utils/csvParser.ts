@@ -1,4 +1,3 @@
-
 import { LoanData, FileUpload } from "./types";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +26,11 @@ export const parseCSV = async (
         
         // Split the file into lines and get the header row
         const lines = csvText.split(/\r\n|\n/);
+        if (lines.length < 2) {
+          reject(new Error("CSV file is empty or has only headers"));
+          return;
+        }
+        
         const headers = lines[0].split(',').map(header => header.trim());
         
         // Validate required headers
@@ -34,8 +38,8 @@ export const parseCSV = async (
         const missingHeaders = requiredHeaders.filter(header => !headers.includes(header));
         
         if (missingHeaders.length > 0) {
-          const errorMsg = `CSV is missing required headers: ${missingHeaders.join(', ')}`;
-          toast.error(errorMsg);
+          const errorMsg = `Error: CSV is missing required headers: ${missingHeaders.join(', ')}`;
+          console.error(errorMsg);
           reject(new Error(errorMsg));
           return;
         }
