@@ -33,6 +33,7 @@ const Index = () => {
   }, []);
 
   const handleDataLoaded = (data: LoanData[]) => {
+    console.log("Data loaded, transitioning to dashboard", data.length);
     setLoanData(data);
     setDataUploaded(true);
   };

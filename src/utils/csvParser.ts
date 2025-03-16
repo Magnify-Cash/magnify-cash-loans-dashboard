@@ -50,6 +50,8 @@ export const parseCSV = async (file: File): Promise<LoanData[]> => {
           loans.push(loan as LoanData);
         }
         
+        console.log("Parsed loan data:", loans);
+        
         // Store loans in Supabase
         const { error } = await storeLoansInDatabase(loans);
         
@@ -60,7 +62,7 @@ export const parseCSV = async (file: File): Promise<LoanData[]> => {
           return;
         }
         
-        toast.success(`Successfully stored ${loans.length} loans in the database`);
+        toast.success(`Successfully processed ${loans.length} loans`);
         console.log("Parsed and stored loans:", loans);
         resolve(loans);
       } catch (error) {
@@ -143,11 +145,11 @@ export const fetchLoansFromDatabase = async (): Promise<LoanData[]> => {
     }
     
     if (!data || data.length === 0) {
-      toast.info("No loans found in the database");
+      console.log("No loans found in the database");
       return [];
     }
     
-    console.log("Fetched loans from database:", data);
+    console.log("Fetched loans from database:", data.length);
     return data as LoanData[];
   } catch (error) {
     console.error("Error in fetchLoansFromDatabase:", error);

@@ -58,7 +58,11 @@ const CSVUploader = ({ onDataLoaded }: CSVUploaderProps) => {
 
     try {
       const loanData = await parseCSV(file);
+      
+      // Make sure to call onDataLoaded with the parsed data
+      // This will trigger the parent component to update its state
       onDataLoaded(loanData);
+      
       toast.success('CSV file processed successfully');
     } catch (error) {
       console.error('Error processing CSV:', error);
@@ -71,7 +75,9 @@ const CSVUploader = ({ onDataLoaded }: CSVUploaderProps) => {
   return (
     <div className="w-full max-w-2xl mx-auto">
       <div
-        className={`file-drop-area ${isDragging ? 'drag-active' : ''}`}
+        className={`border-2 border-dashed border-primary/30 rounded-lg p-12 transition-all duration-300 ${
+          isDragging ? 'bg-primary/5 border-primary/50' : 'bg-background hover:bg-primary/5'
+        } file-drop-area`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
