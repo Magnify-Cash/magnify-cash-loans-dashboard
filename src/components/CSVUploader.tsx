@@ -1,3 +1,4 @@
+
 import { useState, useRef, DragEvent, ChangeEvent } from 'react';
 import { toast } from 'sonner';
 import { Upload, File } from 'lucide-react';
@@ -63,15 +64,18 @@ const CSVUploader = ({ onDataLoaded }: CSVUploaderProps) => {
       // Make sure to call onDataLoaded with the parsed data
       if (loanData && loanData.length > 0) {
         onDataLoaded(loanData);
-        toast.success(`Successfully processed ${loanData.length} loans`);
+        // We removed the success toast here because it's handled in onDataLoaded
       } else {
         toast.error('No valid loan data found in the CSV file');
+        setIsLoading(false);
       }
     } catch (error) {
       console.error('Error processing CSV:', error);
       toast.error('Failed to process CSV file. Check console for details.');
       setIsLoading(false);
     }
+    // We're not using finally here because we want the loading state to persist
+    // until the dashboard transition completes in the parent component
   };
 
   return (

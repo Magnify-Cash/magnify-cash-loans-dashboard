@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, Clock, DollarSign, RefreshCw } from 'lucide-react';
@@ -41,7 +40,6 @@ const Dashboard = ({ data }: DashboardProps) => {
 
   const calculateAllMetrics = (loanData: LoanData[]) => {
     try {
-      // Calculate all metrics and chart data
       const calculatedMetrics = calculateLoanMetrics(loanData);
       setMetrics(calculatedMetrics);
       
@@ -54,7 +52,6 @@ const Dashboard = ({ data }: DashboardProps) => {
       const calculatedAmountChartData = generateAmountChartData(calculatedMetrics);
       setAmountChartData(calculatedAmountChartData);
       
-      // Trigger animation after a small delay
       setTimeout(() => setIsVisible(true), 100);
     } catch (error) {
       console.error("Error calculating metrics:", error);
@@ -141,7 +138,6 @@ const Dashboard = ({ data }: DashboardProps) => {
             </Button>
           </div>
           
-          {/* File Upload Banner */}
           <FileUploadBanner />
           
           <motion.div 

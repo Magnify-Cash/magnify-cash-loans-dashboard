@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
@@ -11,6 +12,7 @@ const Index = () => {
   const [loanData, setLoanData] = useState<LoanData[]>([]);
   const [dataUploaded, setDataUploaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [initialLoadComplete, setInitialLoadComplete] = useState(false);
 
   // Fetch loan data from database on component mount
   useEffect(() => {
@@ -20,6 +22,7 @@ const Index = () => {
         const data = await fetchLoansFromDatabase();
         console.log("Initial data fetch complete:", data.length, "loans");
         setLoanData(data);
+        
         // Auto-transition to dashboard if we have data
         if (data.length > 0) {
           console.log("Setting dataUploaded to true based on existing data");
@@ -30,23 +33,20 @@ const Index = () => {
         toast.error("Failed to fetch loan data");
       } finally {
         setIsLoading(false);
+        setInitialLoadComplete(true);
       }
     };
 
     fetchData();
-  }, []);
+  }, []); // Only run once on mount
 
   const handleDataLoaded = (data: LoanData[]) => {
     console.log("Data loaded, transitioning to dashboard", data.length);
     // Immediately show the dashboard with the new data
     setLoanData(data);
     setDataUploaded(true);
+    toast.success(`Successfully processed ${data.length} loans`);
   };
-
-  // For debugging
-  useEffect(() => {
-    console.log("dataUploaded state changed:", dataUploaded);
-  }, [dataUploaded]);
 
   return (
     <div className="min-h-screen flex flex-col pb-16">
@@ -69,7 +69,7 @@ const Index = () => {
             <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
             <p className="text-muted-foreground">Loading loan data...</p>
           </div>
-        ) : !dataUploaded ? (
+        ) : !dataUploaded && initialLoadComplete ? (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -112,9 +112,9 @@ const Index = () => {
               </p>
             </motion.div>
           </motion.div>
-        ) : (
+        ) : dataUploaded ? (
           <Dashboard data={loanData} />
-        )}
+        ) : null}
       </main>
       
       {dataUploaded && (

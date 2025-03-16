@@ -91,7 +91,6 @@ export const parseCSV = async (file: File): Promise<LoanData[]> => {
           return;
         }
         
-        toast.success(`Successfully processed ${loans.length} loans`);
         console.log("Parsed and stored loans:", loans);
         
         // Return the parsed data with file upload ID
