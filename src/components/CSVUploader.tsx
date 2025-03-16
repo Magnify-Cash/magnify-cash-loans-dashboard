@@ -1,4 +1,3 @@
-
 import { useState, useRef, DragEvent, ChangeEvent } from 'react';
 import { toast } from 'sonner';
 import { Upload, File } from 'lucide-react';
@@ -57,17 +56,20 @@ const CSVUploader = ({ onDataLoaded }: CSVUploaderProps) => {
     setFileName(file.name);
 
     try {
+      console.log("Processing file:", file.name);
       const loanData = await parseCSV(file);
+      console.log("CSV processing complete, data:", loanData.length, "loans");
       
       // Make sure to call onDataLoaded with the parsed data
-      // This will trigger the parent component to update its state
-      onDataLoaded(loanData);
-      
-      toast.success('CSV file processed successfully');
+      if (loanData && loanData.length > 0) {
+        onDataLoaded(loanData);
+        toast.success(`Successfully processed ${loanData.length} loans`);
+      } else {
+        toast.error('No valid loan data found in the CSV file');
+      }
     } catch (error) {
       console.error('Error processing CSV:', error);
-      toast.error('Failed to process CSV file');
-    } finally {
+      toast.error('Failed to process CSV file. Check console for details.');
       setIsLoading(false);
     }
   };

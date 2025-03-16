@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Loader2 } from 'lucide-react';
@@ -19,9 +18,13 @@ const Index = () => {
       try {
         setIsLoading(true);
         const data = await fetchLoansFromDatabase();
+        console.log("Initial data fetch complete:", data.length, "loans");
         setLoanData(data);
         // Auto-transition to dashboard if we have data
-        setDataUploaded(data.length > 0);
+        if (data.length > 0) {
+          console.log("Setting dataUploaded to true based on existing data");
+          setDataUploaded(true);
+        }
       } catch (error) {
         console.error("Error fetching loan data:", error);
         toast.error("Failed to fetch loan data");
@@ -39,6 +42,11 @@ const Index = () => {
     setLoanData(data);
     setDataUploaded(true);
   };
+
+  // For debugging
+  useEffect(() => {
+    console.log("dataUploaded state changed:", dataUploaded);
+  }, [dataUploaded]);
 
   return (
     <div className="min-h-screen flex flex-col pb-16">

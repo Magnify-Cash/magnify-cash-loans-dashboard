@@ -22,6 +22,7 @@ export const parseCSV = async (file: File): Promise<LoanData[]> => {
         
         // Process data rows
         const loans: LoanData[] = [];
+        let validLoans = true;
         
         for (let i = 1; i < lines.length; i++) {
           if (!lines[i].trim()) continue; // Skip empty lines
@@ -43,11 +44,29 @@ export const parseCSV = async (file: File): Promise<LoanData[]> => {
               // Convert empty strings to null for date fields
               loan[header] = values[index] && values[index] !== "" ? values[index] : null;
             } else {
-              loan[header] = values[index] || null;
+              loan[header] = values[index] || "";
             }
           });
           
+          // Validate required fields
+          if (!loan.user_wallet) {
+            console.error(`Row ${i} is missing required user_wallet field`);
+            toast.error(`Row ${i} is missing required user_wallet field`);
+            validLoans = false;
+          }
+          
           loans.push(loan as LoanData);
+        }
+        
+        if (!validLoans) {
+          reject(new Error("Some rows have missing required fields"));
+          return;
+        }
+        
+        if (loans.length === 0) {
+          toast.error("No valid loan data found in CSV");
+          reject(new Error("No valid loan data found in CSV"));
+          return;
         }
         
         console.log("Parsed loan data:", loans);
@@ -143,6 +162,12 @@ const storeLoansInDatabase = async (loans: LoanData[], fileUploadId: string) => 
   for (const batch of batches) {
     // For each loan in the batch, check if it already exists
     for (const loan of batch) {
+      // Skip invalid loans
+      if (!loan.user_wallet) {
+        console.error("Skipping loan with missing user_wallet:", loan);
+        continue;
+      }
+      
       const { data: existingLoan } = await supabase
         .from('loans')
         .select('id')
