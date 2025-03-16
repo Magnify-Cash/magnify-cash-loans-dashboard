@@ -13,6 +13,8 @@ const Index = () => {
   const [dataUploaded, setDataUploaded] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [initialLoadComplete, setInitialLoadComplete] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [processingStatus, setProcessingStatus] = useState('');
 
   // Fetch loan data from database on component mount
   useEffect(() => {
@@ -45,7 +47,14 @@ const Index = () => {
     // Immediately show the dashboard with the new data
     setLoanData(data);
     setDataUploaded(true);
+    setUploadProgress(0);
+    setProcessingStatus('');
     toast.success(`Successfully processed ${data.length} loans`);
+  };
+
+  const handleUploadProgress = (progress: number, status: string) => {
+    setUploadProgress(progress);
+    setProcessingStatus(status);
   };
 
   return (
@@ -96,7 +105,28 @@ const Index = () => {
               </motion.p>
             </div>
             
-            <CSVUploader onDataLoaded={handleDataLoaded} />
+            <CSVUploader 
+              onDataLoaded={handleDataLoaded} 
+              onProgress={handleUploadProgress}
+            />
+            
+            {uploadProgress > 0 && (
+              <div className="mt-8">
+                <p className="text-sm text-center mb-2">{processingStatus}</p>
+                <div className="w-full bg-gray-200 h-2 rounded-full overflow-hidden">
+                  <div 
+                    className="bg-primary h-full transition-all duration-300 ease-out" 
+                    style={{ width: `${uploadProgress}%` }}
+                  ></div>
+                </div>
+                <p className="text-xs text-center mt-2 text-muted-foreground">
+                  {uploadProgress < 100 ? 
+                    `Processing: ${uploadProgress}%` : 
+                    'Finalizing upload...'
+                  }
+                </p>
+              </div>
+            )}
             
             <motion.div
               initial={{ opacity: 0 }}

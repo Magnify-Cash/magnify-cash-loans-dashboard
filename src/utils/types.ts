@@ -54,3 +54,8 @@ export interface FileUpload {
   upload_date: string;
   record_count: number;
 }
+
+export interface ProgressUpdate {
+  percent: number;
+  message: string;
+}
