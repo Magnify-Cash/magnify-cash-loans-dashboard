@@ -1,0 +1,216 @@
+
+import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { BarChart, Bar, PieChart, Pie, Cell, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { BarChart3, PieChart as PieChartIcon } from 'lucide-react';
+import { ChartData } from '@/utils/types';
+
+interface LoanChartsProps {
+  statusData: ChartData[];
+  amountData: {
+    oneDollar: ChartData[];
+    tenDollar: ChartData[];
+  };
+}
+
+const LoanCharts = ({ statusData, amountData }: LoanChartsProps) => {
+  const [chartType, setChartType] = useState<'bar' | 'pie'>('bar');
+  
+  return (
+    <div className="glass-card rounded-xl p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-medium">Loan Analysis</h2>
+        
+        <div className="flex space-x-2">
+          <button
+            className={`p-2 rounded-md ${chartType === 'bar' ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-muted'}`}
+            onClick={() => setChartType('bar')}
+          >
+            <BarChart3 size={18} />
+          </button>
+          <button
+            className={`p-2 rounded-md ${chartType === 'pie' ? 'bg-primary text-white' : 'text-muted-foreground hover:bg-muted'}`}
+            onClick={() => setChartType('pie')}
+          >
+            <PieChartIcon size={18} />
+          </button>
+        </div>
+      </div>
+      
+      <Tabs defaultValue="status">
+        <TabsList className="mb-6">
+          <TabsTrigger value="status">By Status</TabsTrigger>
+          <TabsTrigger value="amount">By Amount</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="status">
+          <motion.div
+            key={`status-${chartType}`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
+            className="h-[300px] w-full"
+          >
+            {chartType === 'bar' ? (
+              <StatusBarChart data={statusData} />
+            ) : (
+              <StatusPieChart data={statusData} />
+            )}
+          </motion.div>
+        </TabsContent>
+        
+        <TabsContent value="amount">
+          <Tabs defaultValue="one">
+            <TabsList className="mb-4">
+              <TabsTrigger value="one">$1 Loans</TabsTrigger>
+              <TabsTrigger value="ten">$10 Loans</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="one">
+              <motion.div
+                key={`one-${chartType}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
+                className="h-[300px] w-full"
+              >
+                {chartType === 'bar' ? (
+                  <AmountBarChart data={amountData.oneDollar} title="$1 Loans" />
+                ) : (
+                  <AmountPieChart data={amountData.oneDollar} title="$1 Loans" />
+                )}
+              </motion.div>
+            </TabsContent>
+            
+            <TabsContent value="ten">
+              <motion.div
+                key={`ten-${chartType}`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3 }}
+                className="h-[300px] w-full"
+              >
+                {chartType === 'bar' ? (
+                  <AmountBarChart data={amountData.tenDollar} title="$10 Loans" />
+                ) : (
+                  <AmountPieChart data={amountData.tenDollar} title="$10 Loans" />
+                )}
+              </motion.div>
+            </TabsContent>
+          </Tabs>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+};
+
+const StatusBarChart = ({ data }: { data: ChartData[] }) => (
+  <ResponsiveContainer width="100%" height="100%">
+    <BarChart
+      data={data}
+      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+    >
+      <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
+      <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+      <YAxis tick={{ fontSize: 12 }} />
+      <Tooltip 
+        formatter={(value: number) => [`${value} loans`, 'Count']}
+        contentStyle={{ borderRadius: '8px' }}
+      />
+      <Legend />
+      {data.map((entry, index) => (
+        <Bar 
+          key={`bar-${index}`} 
+          dataKey="value" 
+          name={entry.name} 
+          fill={entry.color}
+          radius={[4, 4, 0, 0]}
+        />
+      ))}
+    </BarChart>
+  </ResponsiveContainer>
+);
+
+const StatusPieChart = ({ data }: { data: ChartData[] }) => (
+  <ResponsiveContainer width="100%" height="100%">
+    <PieChart>
+      <Pie
+        data={data}
+        cx="50%"
+        cy="50%"
+        labelLine={false}
+        outerRadius={100}
+        innerRadius={60}
+        fill="#8884d8"
+        dataKey="value"
+        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+      >
+        {data.map((entry, index) => (
+          <Cell key={`cell-${index}`} fill={entry.color} />
+        ))}
+      </Pie>
+      <Tooltip 
+        formatter={(value: number) => [`${value} loans`, 'Count']}
+        contentStyle={{ borderRadius: '8px' }}
+      />
+      <Legend />
+    </PieChart>
+  </ResponsiveContainer>
+);
+
+const AmountBarChart = ({ data, title }: { data: ChartData[], title: string }) => (
+  <ResponsiveContainer width="100%" height="100%">
+    <BarChart
+      data={data}
+      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+    >
+      <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
+      <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+      <YAxis tick={{ fontSize: 12 }} />
+      <Tooltip 
+        formatter={(value: number) => [`${value} loans`, title]}
+        contentStyle={{ borderRadius: '8px' }}
+      />
+      <Legend />
+      {data.map((entry, index) => (
+        <Bar 
+          key={`bar-${index}`} 
+          dataKey="value" 
+          name={entry.name} 
+          fill={entry.color}
+          radius={[4, 4, 0, 0]} 
+        />
+      ))}
+    </BarChart>
+  </ResponsiveContainer>
+);
+
+const AmountPieChart = ({ data, title }: { data: ChartData[], title: string }) => (
+  <ResponsiveContainer width="100%" height="100%">
+    <PieChart>
+      <Pie
+        data={data}
+        cx="50%"
+        cy="50%"
+        labelLine={false}
+        outerRadius={100}
+        innerRadius={60}
+        fill="#8884d8"
+        dataKey="value"
+        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+      >
+        {data.map((entry, index) => (
+          <Cell key={`cell-${index}`} fill={entry.color} />
+        ))}
+      </Pie>
+      <Tooltip 
+        formatter={(value: number) => [`${value} loans`, title]}
+        contentStyle={{ borderRadius: '8px' }}
+      />
+      <Legend />
+    </PieChart>
+  </ResponsiveContainer>
+);
+
+export default LoanCharts;
