@@ -33,13 +33,16 @@ export function calculateLoanMetrics(loans: LoanData[]): LoanMetrics {
     const isDueDateInFuture = !isNaN(dueDate.getTime()) && dueDate > today;
     const isMissingRepaidAmount = loan.loan_repaid_amount === undefined || loan.loan_repaid_amount === null;
     
-    // Count defaulted loans
-    if (loan.is_defaulted || loan.default_loan_date) {
+    // Count defaulted loans - check for explicit true value or non-empty default_loan_date
+    const isDefaulted = loan.is_defaulted === true;
+    const hasDefaultDate = loan.default_loan_date !== null && loan.default_loan_date !== "" && loan.default_loan_date !== undefined;
+    
+    if (isDefaulted || hasDefaultDate) {
       metrics.totalDefaulted++;
     }
     
     // Count in-progress loans
-    if (!loan.is_defaulted && isDueDateInFuture && 
+    if (!isDefaulted && !hasDefaultDate && isDueDateInFuture && 
         (isMissingRepaidAmount || loan.loan_repaid_amount < loan.loan_amount)) {
       metrics.totalInProgress++;
     }
@@ -48,7 +51,7 @@ export function calculateLoanMetrics(loans: LoanData[]): LoanMetrics {
     if (Math.abs(loan.loan_amount - 1) < 0.01) {
       metrics.oneDollarLoans.total++;
       
-      if (loan.is_defaulted) {
+      if (isDefaulted || hasDefaultDate) {
         metrics.oneDollarLoans.defaulted++;
       } else if (!isMissingRepaidAmount && loan.loan_repaid_amount >= 1.025) {
         metrics.oneDollarLoans.repaid++;
@@ -61,7 +64,7 @@ export function calculateLoanMetrics(loans: LoanData[]): LoanMetrics {
     if (Math.abs(loan.loan_amount - 10) < 0.01) {
       metrics.tenDollarLoans.total++;
       
-      if (loan.is_defaulted) {
+      if (isDefaulted || hasDefaultDate) {
         metrics.tenDollarLoans.defaulted++;
       } else if (!isMissingRepaidAmount && loan.loan_repaid_amount >= 10.15) {
         metrics.tenDollarLoans.repaid++;

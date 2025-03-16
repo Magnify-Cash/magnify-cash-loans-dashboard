@@ -36,7 +36,11 @@ export const parseCSV = async (file: File): Promise<LoanData[]> => {
               // Handle potentially missing loan_repaid_amount
               loan[header] = values[index] ? parseFloat(values[index]) : null;
             } else if (header === 'is_defaulted') {
+              // Convert string "TRUE"/"FALSE" to actual boolean values
               loan[header] = values[index]?.toLowerCase() === 'true';
+            } else if (header === 'default_loan_date' || header === 'time_loan_ended') {
+              // Convert empty strings to null for date fields
+              loan[header] = values[index] && values[index] !== "" ? values[index] : null;
             } else {
               loan[header] = values[index] || null;
             }
