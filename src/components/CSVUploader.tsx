@@ -1,4 +1,3 @@
-
 import { useState, useRef, DragEvent, ChangeEvent } from 'react';
 import { toast } from 'sonner';
 import { Upload, File, Loader2, AlertCircle, HelpCircle } from 'lucide-react';
@@ -28,7 +27,6 @@ const CSVUploader = ({ onDataLoaded, onProgress }: CSVUploaderProps) => {
   const [validationError, setValidationError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Update progress both internally and notify parent
   const updateProgress = (value: number, status: string) => {
     setProgress(value);
     setProcessingStep(status);
@@ -78,16 +76,13 @@ const CSVUploader = ({ onDataLoaded, onProgress }: CSVUploaderProps) => {
   };
 
   const processFile = async (file: File) => {
-    // Check file extension
     if (!file.name.endsWith('.csv')) {
       toast.error('Please upload a CSV file');
       return;
     }
 
-    // Reset previous errors
     setValidationError(null);
     
-    // Reset state
     setIsLoading(true);
     setFileName(file.name);
     updateProgress(5, 'Preparing file...');
@@ -95,27 +90,21 @@ const CSVUploader = ({ onDataLoaded, onProgress }: CSVUploaderProps) => {
     try {
       console.log("Processing file:", file.name);
       
-      // Set up progress callbacks
       const progressCallback = (percent: number, message: string) => {
         updateProgress(percent, message);
       };
       
-      // Start processing with timeout
       const processingPromise = parseCSV(file, progressCallback);
       
-      // Set up timeout (30 seconds)
       const timeoutPromise = new Promise<LoanData[]>((_, reject) => {
         setTimeout(() => reject(new Error('Processing timed out after 30 seconds')), 30000);
       });
       
-      // Race between processing and timeout
       const loanData = await Promise.race([processingPromise, timeoutPromise]);
       
-      // Make sure to call onDataLoaded with the parsed data
       if (loanData && loanData.length > 0) {
         updateProgress(100, 'Finalizing...');
         
-        // Short delay before transitioning to avoid visual jarring
         setTimeout(() => {
           onDataLoaded(loanData);
         }, 500);
@@ -135,7 +124,9 @@ const CSVUploader = ({ onDataLoaded, onProgress }: CSVUploaderProps) => {
         } else if (error.message.includes('required fields')) {
           errorMessage = 'Some rows have missing required fields. Please check your CSV file and ensure all rows have the required fields.';
         } else if (error.message.includes('required headers')) {
-          errorMessage = error.message; // Use the exact error message for header validation issues
+          errorMessage = error.message;
+        } else {
+          errorMessage = error.message;
         }
       }
       
@@ -236,7 +227,7 @@ const CSVUploader = ({ onDataLoaded, onProgress }: CSVUploaderProps) => {
 
       <div className="mt-6 bg-muted/50 p-4 rounded-lg border border-border">
         <div className="flex justify-between items-center mb-2">
-          <h4 className="text-sm font-medium">Required CSV Format</h4>
+          <h4 className="text-sm font-medium">CSV Format Guide</h4>
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -245,7 +236,7 @@ const CSVUploader = ({ onDataLoaded, onProgress }: CSVUploaderProps) => {
                 </div>
               </TooltipTrigger>
               <TooltipContent className="max-w-sm">
-                <p>Your CSV file must include these columns with exact header names. Additional columns are allowed but will be ignored.</p>
+                <p>Your CSV file should include columns with these or similar names. We attempt to match various common names for these fields.</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
@@ -262,6 +253,16 @@ const CSVUploader = ({ onDataLoaded, onProgress }: CSVUploaderProps) => {
         <p className="text-xs text-muted-foreground mt-2">
           Additional recommended columns: loan_repaid_amount, time_loan_started, time_loan_ended, default_loan_date, is_defaulted, version
         </p>
+
+        <div className="mt-3 text-xs text-muted-foreground">
+          <strong>Accepted column variations:</strong>
+          <ul className="mt-1 pl-4 space-y-1 list-disc">
+            <li><span className="font-semibold">user_wallet</span>: wallet, address</li>
+            <li><span className="font-semibold">time_loan_started</span>: date_loan_started, loan_started, start_date</li>
+            <li><span className="font-semibold">time_loan_ended</span>: date_loan_ended, loan_ended, end_date</li>
+            <li><span className="font-semibold">default_loan_date</span>: date_loan_defaulted, defaulted_date</li>
+          </ul>
+        </div>
 
         <div className="mt-3 text-xs text-muted-foreground">
           <strong>Example CSV first line:</strong><br />
