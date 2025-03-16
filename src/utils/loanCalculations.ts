@@ -22,15 +22,23 @@ export function calculateLoanMetrics(loans: LoanData[]): LoanMetrics {
     }
   };
   
+  // Current date for comparing due dates
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
   // Process each loan
   loans.forEach(loan => {
+    // Parse the due date
+    const dueDate = new Date(loan.loan_due_date);
+    const isDueDateInFuture = !isNaN(dueDate.getTime()) && dueDate > today;
+    
     // Count defaulted loans
-    if (loan.is_defaulted || loan.date_loan_defaulted) {
+    if (loan.is_defaulted || loan.default_loan_date) {
       metrics.totalDefaulted++;
     }
     
     // Count in-progress loans
-    if (!loan.is_defaulted && loan.loan_repaid_amount < loan.loan_amount) {
+    if (!loan.is_defaulted && loan.loan_repaid_amount < loan.loan_amount && isDueDateInFuture) {
       metrics.totalInProgress++;
     }
     
@@ -40,9 +48,9 @@ export function calculateLoanMetrics(loans: LoanData[]): LoanMetrics {
       
       if (loan.is_defaulted) {
         metrics.oneDollarLoans.defaulted++;
-      } else if (Math.abs(loan.loan_repaid_amount - 1.025) < 0.001) {
+      } else if (loan.loan_repaid_amount >= 1.025) {
         metrics.oneDollarLoans.repaid++;
-      } else if (loan.loan_repaid_amount < 1.025) {
+      } else if (loan.loan_repaid_amount < 1.025 && isDueDateInFuture) {
         metrics.oneDollarLoans.inProgress++;
       }
     }
@@ -53,9 +61,9 @@ export function calculateLoanMetrics(loans: LoanData[]): LoanMetrics {
       
       if (loan.is_defaulted) {
         metrics.tenDollarLoans.defaulted++;
-      } else if (Math.abs(loan.loan_repaid_amount - 10.15) < 0.001) {
+      } else if (loan.loan_repaid_amount >= 10.15) {
         metrics.tenDollarLoans.repaid++;
-      } else if (loan.loan_repaid_amount < 10.15) {
+      } else if (loan.loan_repaid_amount < 10.15 && isDueDateInFuture) {
         metrics.tenDollarLoans.inProgress++;
       }
     }
@@ -107,12 +115,15 @@ export function groupLoansByDueDate(loans: LoanData[]): DueDateGroup[] {
     { label: "Due in 30 days", days: 30, count: 0, loans: [] }
   ];
   
-  // Only process non-defaulted and not fully repaid loans
-  const activeLoans = loans.filter(loan => 
-    !loan.is_defaulted && 
-    !loan.date_loan_defaulted && 
-    loan.loan_repaid_amount < loan.loan_amount
-  );
+  // Only process non-defaulted and not fully repaid loans with future due dates
+  const activeLoans = loans.filter(loan => {
+    if (loan.is_defaulted || loan.default_loan_date) return false;
+    
+    const dueDate = new Date(loan.loan_due_date);
+    const isDueDateInFuture = !isNaN(dueDate.getTime()) && dueDate >= today;
+    
+    return loan.loan_repaid_amount < loan.loan_amount && isDueDateInFuture;
+  });
   
   activeLoans.forEach(loan => {
     const dueDate = new Date(loan.loan_due_date);

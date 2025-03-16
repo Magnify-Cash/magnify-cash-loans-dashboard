@@ -85,7 +85,7 @@ const LoanBreakdown = ({ metrics }: LoanBreakdownProps) => {
                 </div>
                 <p className="font-medium">{category.data.repaid}</p>
                 <p className="text-xs text-muted-foreground">
-                  {formatCurrency(category.repaidAmount)} each
+                  {formatCurrency(category.repaidAmount)} or more
                 </p>
               </div>
               

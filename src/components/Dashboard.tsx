@@ -97,7 +97,7 @@ const Dashboard = ({ data }: DashboardProps) => {
             <KPICard
               title="Loans In Progress"
               value={metrics.totalInProgress}
-              description="Active loans awaiting repayment"
+              description="Active loans with future due dates"
               icon={<Clock size={20} />}
               index={2}
             />

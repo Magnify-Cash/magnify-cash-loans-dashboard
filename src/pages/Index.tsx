@@ -67,9 +67,9 @@ const Index = () => {
             >
               <p>CSV should contain the following columns:</p>
               <p className="mt-2 font-mono text-xs bg-muted p-2 rounded-md inline-block">
-                user_wallet, loan_amount, loan_repaid_amount, loan_term, date_loan_started,
+                user_wallet, loan_amount, loan_repaid_amount, loan_term, time_loan_started,
                 <br />
-                date_loan_repaid, loan_due_date, date_loan_defaulted, is_defaulted, version
+                time_loan_ended, loan_due_date, default_loan_date, is_defaulted, version
               </p>
             </motion.div>
           </motion.div>

@@ -4,10 +4,10 @@ export interface LoanData {
   loan_amount: number;
   loan_repaid_amount: number;
   loan_term: number;
-  date_loan_started: string;
-  date_loan_repaid: string | null;
+  time_loan_started: string;
+  time_loan_ended: string | null;
   loan_due_date: string;
-  date_loan_defaulted: string | null;
+  default_loan_date: string | null;
   is_defaulted: boolean;
   version: string;
 }
