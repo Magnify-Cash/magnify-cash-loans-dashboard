@@ -5,6 +5,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BarChart3, PieChart as PieChartIcon } from 'lucide-react';
 import { ChartData } from '@/utils/types';
 
+interface RechartsBarData {
+  name: string;
+  [key: string]: string | number;
+}
+
 interface LoanChartsProps {
   statusData: ChartData[];
   amountData: {
@@ -104,22 +109,17 @@ const LoanCharts = ({ statusData, amountData }: LoanChartsProps) => {
   );
 };
 
-// Custom tooltip component to prevent duplicate entries
 const CustomTooltip = ({ active, payload, label, title }: any) => {
   if (!active || !payload || !payload.length) return null;
 
-  // Process payload to remove duplicate entries
-  // Create a map to store unique entries by name
   const uniqueEntries = new Map();
   
   payload.forEach((entry: any) => {
-    // Only keep the first occurrence of each name
     if (!uniqueEntries.has(entry.name)) {
       uniqueEntries.set(entry.name, entry);
     }
   });
 
-  // Convert the Map back to an array
   const uniquePayload = Array.from(uniqueEntries.values());
 
   return (
@@ -140,32 +140,50 @@ const CustomTooltip = ({ active, payload, label, title }: any) => {
   );
 };
 
-const StatusBarChart = ({ data }: { data: ChartData[] }) => (
-  <ResponsiveContainer width="100%" height="100%">
-    <BarChart
-      data={data}
-      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-    >
-      <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
-      <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-      <YAxis tick={{ fontSize: 12 }} />
-      <Tooltip 
-        content={<CustomTooltip />}
-        contentStyle={{ borderRadius: '8px' }}
-      />
-      <Legend />
-      {data.map((entry, index) => (
-        <Bar 
-          key={`bar-${index}`} 
-          dataKey="value" 
-          name={entry.name} 
-          fill={entry.color}
-          radius={[4, 4, 0, 0]}
-        />
-      ))}
-    </BarChart>
-  </ResponsiveContainer>
-);
+const prepareBarChartData = (data: ChartData[]): RechartsBarData[] => {
+  const result: RechartsBarData[] = [{ name: 'Loan Status' }];
+  
+  data.forEach(item => {
+    result[0][item.name] = item.value;
+  });
+  
+  return result;
+};
+
+const StatusBarChart = ({ data }: { data: ChartData[] }) => {
+  const barData = prepareBarChartData(data);
+  
+  const dataKeys = data.map(item => item.name);
+  
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart
+        data={barData}
+        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+        barGap={10}
+      >
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
+        <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+        <YAxis tick={{ fontSize: 12 }} />
+        <Tooltip content={<CustomTooltip />} />
+        <Legend />
+        
+        {dataKeys.map((key, index) => {
+          const chartItem = data.find(item => item.name === key);
+          return (
+            <Bar 
+              key={`bar-${index}`} 
+              dataKey={key} 
+              fill={chartItem?.color || '#8884d8'} 
+              radius={[4, 4, 0, 0]}
+              name={key}
+            />
+          );
+        })}
+      </BarChart>
+    </ResponsiveContainer>
+  );
+};
 
 const StatusPieChart = ({ data }: { data: ChartData[] }) => (
   <ResponsiveContainer width="100%" height="100%">
@@ -185,41 +203,46 @@ const StatusPieChart = ({ data }: { data: ChartData[] }) => (
           <Cell key={`cell-${index}`} fill={entry.color} />
         ))}
       </Pie>
-      <Tooltip 
-        content={<CustomTooltip />}
-        contentStyle={{ borderRadius: '8px' }}
-      />
+      <Tooltip content={<CustomTooltip />} />
       <Legend />
     </PieChart>
   </ResponsiveContainer>
 );
 
-const AmountBarChart = ({ data, title }: { data: ChartData[], title: string }) => (
-  <ResponsiveContainer width="100%" height="100%">
-    <BarChart
-      data={data}
-      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-    >
-      <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
-      <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-      <YAxis tick={{ fontSize: 12 }} />
-      <Tooltip 
-        content={(props) => <CustomTooltip {...props} title={title} />}
-        contentStyle={{ borderRadius: '8px' }}
-      />
-      <Legend />
-      {data.map((entry, index) => (
-        <Bar 
-          key={`bar-${index}`} 
-          dataKey="value" 
-          name={entry.name} 
-          fill={entry.color}
-          radius={[4, 4, 0, 0]} 
-        />
-      ))}
-    </BarChart>
-  </ResponsiveContainer>
-);
+const AmountBarChart = ({ data, title }: { data: ChartData[], title: string }) => {
+  const barData = prepareBarChartData(data);
+  
+  const dataKeys = data.map(item => item.name);
+  
+  return (
+    <ResponsiveContainer width="100%" height="100%">
+      <BarChart
+        data={barData}
+        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+        barGap={10}
+      >
+        <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" />
+        <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+        <YAxis tick={{ fontSize: 12 }} />
+        <Tooltip content={(props) => <CustomTooltip {...props} title={title} />} />
+        <Legend />
+        
+        {dataKeys.map((key, index) => {
+          const chartItem = data.find(item => item.name === key);
+          return (
+            <Bar 
+              key={`bar-${index}`} 
+              dataKey={key} 
+              fill={chartItem?.color || '#8884d8'} 
+              radius={[4, 4, 0, 0]}
+              name={key}
+            />
+          );
+        })}
+      </BarChart>
+    </ResponsiveContainer>
+  );
+};
 
 const AmountPieChart = ({ data, title }: { data: ChartData[], title: string }) => (
   <ResponsiveContainer width="100%" height="100%">
@@ -239,10 +262,7 @@ const AmountPieChart = ({ data, title }: { data: ChartData[], title: string }) =
           <Cell key={`cell-${index}`} fill={entry.color} />
         ))}
       </Pie>
-      <Tooltip 
-        content={(props) => <CustomTooltip {...props} title={title} />}
-        contentStyle={{ borderRadius: '8px' }}
-      />
+      <Tooltip content={(props) => <CustomTooltip {...props} title={title} />} />
       <Legend />
     </PieChart>
   </ResponsiveContainer>
