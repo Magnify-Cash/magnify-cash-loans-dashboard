@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Activity, Clock, DollarSign, RefreshCw } from 'lucide-react';
+import { Activity, Clock, DollarSign, RefreshCw, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import KPICard from './KPICard';
 import LoanBreakdown from './LoanBreakdown';
@@ -176,7 +175,7 @@ const Dashboard = ({ data }: DashboardProps) => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
+            className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8"
           >
             <KPICard
               title="Total Loans Issued"
@@ -189,11 +188,19 @@ const Dashboard = ({ data }: DashboardProps) => {
             />
             
             <KPICard
+              title="Loans Repaid"
+              value={metrics.oneDollarLoans.repaid + metrics.tenDollarLoans.repaid}
+              description={`${(((metrics.oneDollarLoans.repaid + metrics.tenDollarLoans.repaid) / metrics.totalLoans) * 100).toFixed(1)}% repayment rate`}
+              icon={<CheckCircle size={20} />}
+              index={1}
+            />
+            
+            <KPICard
               title="Loans Defaulted"
               value={metrics.totalDefaulted}
               description={`${((metrics.totalDefaulted / metrics.totalLoans) * 100).toFixed(1)}% default rate`}
               icon={<Activity size={20} />}
-              index={1}
+              index={2}
             />
             
             <KPICard
@@ -201,7 +208,7 @@ const Dashboard = ({ data }: DashboardProps) => {
               value={metrics.totalInProgress}
               description="Active loans with future due dates"
               icon={<Clock size={20} />}
-              index={2}
+              index={3}
             />
           </motion.div>
           
