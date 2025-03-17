@@ -1,13 +1,14 @@
 
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import CSVUploader from '@/components/CSVUploader';
 import Dashboard from '@/components/Dashboard';
 import { LoanData } from '@/utils/types';
 import { fetchLoansFromDatabase } from '@/utils/csvParser';
 import { toast } from 'sonner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Progress } from '@/components/ui/progress';
 
 const Index = () => {
   const [loanData, setLoanData] = useState<LoanData[]>([]);
@@ -17,6 +18,7 @@ const Index = () => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [processingStatus, setProcessingStatus] = useState('');
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadProgress, setLoadProgress] = useState(0);
 
   // Fetch loan data from database on component mount
   useEffect(() => {
@@ -24,7 +26,13 @@ const Index = () => {
       try {
         setIsLoading(true);
         setLoadError(null);
-        const data = await fetchLoansFromDatabase();
+        
+        const progressCallback = (percent: number, message: string) => {
+          setLoadProgress(percent);
+          setProcessingStatus(message);
+        };
+        
+        const data = await fetchLoansFromDatabase(progressCallback);
         console.log("Initial data fetch complete:", data.length, "loans");
         setLoanData(data);
         
@@ -84,7 +92,13 @@ const Index = () => {
         {isLoading ? (
           <div className="flex flex-col items-center justify-center h-64">
             <Loader2 className="w-10 h-10 text-primary animate-spin mb-4" />
-            <p className="text-muted-foreground">Loading loan data...</p>
+            <p className="text-muted-foreground mb-4">{processingStatus || "Loading loan data..."}</p>
+            {loadProgress > 0 && (
+              <div className="w-64 mt-2">
+                <Progress value={loadProgress} className="h-2" />
+                <p className="text-xs text-muted-foreground mt-1 text-center">{loadProgress}% complete</p>
+              </div>
+            )}
           </div>
         ) : loadError ? (
           <div className="max-w-3xl mx-auto mt-12">

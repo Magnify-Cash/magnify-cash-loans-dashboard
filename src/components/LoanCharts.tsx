@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { BarChart, Bar, PieChart, Pie, Cell, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
@@ -112,25 +113,15 @@ const LoanCharts = ({ statusData, amountData }: LoanChartsProps) => {
 const CustomTooltip = ({ active, payload, label, title }: any) => {
   if (!active || !payload || !payload.length) return null;
 
-  const uniqueEntries = new Map();
-  
-  payload.forEach((entry: any) => {
-    if (!uniqueEntries.has(entry.name)) {
-      uniqueEntries.set(entry.name, entry);
-    }
-  });
-
-  const uniquePayload = Array.from(uniqueEntries.values());
-
   return (
     <div className="bg-background border border-border/50 rounded-lg p-2 shadow-lg text-xs">
       {title && <p className="font-medium mb-1">{title}</p>}
       {label && <p className="text-muted-foreground mb-1">{label}</p>}
-      {uniquePayload.map((entry: any, index: number) => (
+      {payload.map((entry: any, index: number) => (
         <div key={`tooltip-item-${index}`} className="flex items-center gap-2">
           <div 
             className="w-2 h-2 rounded-sm" 
-            style={{ backgroundColor: entry.color || entry.fill }}
+            style={{ backgroundColor: entry.fill || entry.color }}
           />
           <span className="text-muted-foreground">{entry.name}: </span>
           <span className="font-medium">{entry.value} loans</span>
@@ -140,20 +131,20 @@ const CustomTooltip = ({ active, payload, label, title }: any) => {
   );
 };
 
+// Transform ChartData array into a format suitable for Recharts bar charts
 const prepareBarChartData = (data: ChartData[]): RechartsBarData[] => {
-  const result: RechartsBarData[] = [{ name: 'Loan Status' }];
+  // Create a single object with all categories as properties
+  const result: RechartsBarData = { name: 'Loan Status' };
   
   data.forEach(item => {
-    result[0][item.name] = item.value;
+    result[item.name] = item.value;
   });
   
-  return result;
+  return [result]; // Return as an array with a single object
 };
 
 const StatusBarChart = ({ data }: { data: ChartData[] }) => {
   const barData = prepareBarChartData(data);
-  
-  const dataKeys = data.map(item => item.name);
   
   return (
     <ResponsiveContainer width="100%" height="100%">
@@ -168,18 +159,16 @@ const StatusBarChart = ({ data }: { data: ChartData[] }) => {
         <Tooltip content={<CustomTooltip />} />
         <Legend />
         
-        {dataKeys.map((key, index) => {
-          const chartItem = data.find(item => item.name === key);
-          return (
-            <Bar 
-              key={`bar-${index}`} 
-              dataKey={key} 
-              fill={chartItem?.color || '#8884d8'} 
-              radius={[4, 4, 0, 0]}
-              name={key}
-            />
-          );
-        })}
+        {/* Create one Bar component for each status category */}
+        {data.map((item, index) => (
+          <Bar 
+            key={`bar-${index}`} 
+            dataKey={item.name} 
+            fill={item.color} 
+            radius={[4, 4, 0, 0]}
+            name={item.name}
+          />
+        ))}
       </BarChart>
     </ResponsiveContainer>
   );
@@ -212,8 +201,6 @@ const StatusPieChart = ({ data }: { data: ChartData[] }) => (
 const AmountBarChart = ({ data, title }: { data: ChartData[], title: string }) => {
   const barData = prepareBarChartData(data);
   
-  const dataKeys = data.map(item => item.name);
-  
   return (
     <ResponsiveContainer width="100%" height="100%">
       <BarChart
@@ -227,18 +214,16 @@ const AmountBarChart = ({ data, title }: { data: ChartData[], title: string }) =
         <Tooltip content={(props) => <CustomTooltip {...props} title={title} />} />
         <Legend />
         
-        {dataKeys.map((key, index) => {
-          const chartItem = data.find(item => item.name === key);
-          return (
-            <Bar 
-              key={`bar-${index}`} 
-              dataKey={key} 
-              fill={chartItem?.color || '#8884d8'} 
-              radius={[4, 4, 0, 0]}
-              name={key}
-            />
-          );
-        })}
+        {/* Create one Bar component for each status category */}
+        {data.map((item, index) => (
+          <Bar 
+            key={`bar-${index}`} 
+            dataKey={item.name} 
+            fill={item.color} 
+            radius={[4, 4, 0, 0]}
+            name={item.name}
+          />
+        ))}
       </BarChart>
     </ResponsiveContainer>
   );

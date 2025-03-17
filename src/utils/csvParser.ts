@@ -375,26 +375,78 @@ const storeLoansInDatabase = async (
   return { error };
 };
 
-export const fetchLoansFromDatabase = async (): Promise<LoanData[]> => {
+export const fetchLoansFromDatabase = async (progressCallback?: ProgressCallback): Promise<LoanData[]> => {
   try {
-    const { data, error } = await supabase
+    const pageSize = 1000; // Maximum number of records per page
+    let allLoans: LoanData[] = [];
+    let page = 0;
+    let hasMore = true;
+    
+    // Start loading message
+    progressCallback?.(0, "Loading loan data...");
+    
+    // Get total count first to calculate progress
+    const { count, error: countError } = await supabase
       .from('loans')
-      .select('*')
-      .order('loan_due_date', { ascending: true });
+      .select('*', { count: 'exact', head: true });
       
-    if (error) {
-      console.error("Error fetching loans:", error);
-      toast.error("Error fetching loans from database");
-      throw error;
+    if (countError) {
+      console.error("Error counting loans:", countError);
+      toast.error("Error counting loans in database");
+      throw countError;
     }
     
-    if (!data || data.length === 0) {
+    const totalCount = count || 0;
+    console.log(`Found ${totalCount} total loans to fetch`);
+    
+    if (totalCount === 0) {
+      progressCallback?.(100, "No loans found");
+      return [];
+    }
+    
+    while (hasMore) {
+      const from = page * pageSize;
+      const to = from + pageSize - 1;
+      
+      progressCallback?.(
+        Math.round((allLoans.length / totalCount) * 100), 
+        `Loading loans ${from + 1}-${to + 1} of ${totalCount}...`
+      );
+      
+      const { data, error } = await supabase
+        .from('loans')
+        .select('*')
+        .range(from, to)
+        .order('loan_due_date', { ascending: true });
+        
+      if (error) {
+        console.error(`Error fetching loans page ${page}:`, error);
+        toast.error(`Error fetching loans (page ${page + 1})`);
+        throw error;
+      }
+      
+      if (!data || data.length === 0) {
+        hasMore = false;
+      } else {
+        allLoans = [...allLoans, ...data as LoanData[]];
+        page++;
+        
+        // If we got fewer records than pageSize, we've reached the end
+        if (data.length < pageSize) {
+          hasMore = false;
+        }
+      }
+    }
+    
+    progressCallback?.(100, "Loan data loaded successfully");
+    console.log(`Fetched ${allLoans.length} loans from database`);
+    
+    if (allLoans.length === 0) {
       console.log("No loans found in the database");
       return [];
     }
     
-    console.log("Fetched loans from database:", data.length);
-    return data as LoanData[];
+    return allLoans as LoanData[];
   } catch (error) {
     console.error("Error in fetchLoansFromDatabase:", error);
     toast.error("Failed to fetch loan data");

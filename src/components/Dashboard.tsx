@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, Clock, DollarSign, RefreshCw } from 'lucide-react';
@@ -8,6 +9,7 @@ import UpcomingLoans from './UpcomingLoans';
 import LoanCharts from './LoanCharts';
 import FileUploadBanner from './FileUploadBanner';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 import { LoanData, LoanMetrics, DueDateGroup } from '@/utils/types';
 import { fetchLoansFromDatabase } from '@/utils/csvParser';
 import { 
@@ -29,6 +31,8 @@ const Dashboard = ({ data }: DashboardProps) => {
   const [amountChartData, setAmountChartData] = useState({ oneDollar: [], tenDollar: [] });
   const [isVisible, setIsVisible] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [loadProgress, setLoadProgress] = useState(0);
+  const [loadStatus, setLoadStatus] = useState('');
 
   useEffect(() => {
     if (data.length > 0) {
@@ -59,14 +63,22 @@ const Dashboard = ({ data }: DashboardProps) => {
     }
   };
 
+  const handleProgressUpdate = (percent: number, message: string) => {
+    setLoadProgress(percent);
+    setLoadStatus(message);
+  };
+
   const handleRefresh = async () => {
     try {
       setIsRefreshing(true);
-      const freshData = await fetchLoansFromDatabase();
+      setLoadProgress(0);
+      setLoadStatus('Preparing to load data...');
+      
+      const freshData = await fetchLoansFromDatabase(handleProgressUpdate);
       
       if (freshData.length > 0) {
         calculateAllMetrics(freshData);
-        toast.success("Dashboard data refreshed successfully");
+        toast.success(`Successfully loaded ${freshData.length} loans`);
       } else {
         toast.info("No loan data found in the database");
       }
@@ -95,6 +107,14 @@ const Dashboard = ({ data }: DashboardProps) => {
             </>
           )}
         </Button>
+        
+        {isRefreshing && loadProgress > 0 && (
+          <div className="mt-6 max-w-md mx-auto">
+            <p className="text-sm mb-2">{loadStatus}</p>
+            <Progress value={loadProgress} className="h-2" />
+            <p className="text-xs text-muted-foreground mt-1">{loadProgress}% complete</p>
+          </div>
+        )}
       </div>
     );
   }
@@ -137,6 +157,18 @@ const Dashboard = ({ data }: DashboardProps) => {
               )}
             </Button>
           </div>
+          
+          {isRefreshing && loadProgress > 0 && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6"
+            >
+              <p className="text-sm mb-2">{loadStatus}</p>
+              <Progress value={loadProgress} className="h-2" />
+              <p className="text-xs text-muted-foreground mt-1">{loadProgress}% complete</p>
+            </motion.div>
+          )}
           
           <FileUploadBanner />
           
