@@ -48,7 +48,6 @@ const normalizeHeaderName = (header: string): string => {
 const findStandardFieldName = (header: string): string | null => {
   const normalizedHeader = normalizeHeaderName(header);
   
-  // Debug header normalization
   console.log(`Normalizing header: "${header}" -> "${normalizedHeader}"`);
   
   for (const [standardField, variations] of Object.entries(COLUMN_MAPPINGS)) {
@@ -59,9 +58,30 @@ const findStandardFieldName = (header: string): string | null => {
     }
   }
   
-  // No match found
   console.log(`No match found for header: "${header}"`);
   return null;
+};
+
+// Function to clean and validate timestamp values
+const cleanTimestamp = (value: string | null): string | null => {
+  if (!value) return null;
+  
+  const cleanValue = value.replace(/^["']+|["']+$/g, '').trim();
+  
+  if (!cleanValue || cleanValue === '') return null;
+  
+  try {
+    const date = new Date(cleanValue);
+    if (isNaN(date.getTime())) {
+      console.warn(`Invalid date format: "${cleanValue}"`);
+      return null;
+    }
+    
+    return date.toISOString();
+  } catch (error) {
+    console.warn(`Error parsing date: "${cleanValue}"`, error);
+    return null;
+  }
 };
 
 export const parseCSV = async (
@@ -73,7 +93,6 @@ export const parseCSV = async (
     
     reader.onload = async (event) => {
       try {
-        // Update progress
         progressCallback?.(10, "Parsing CSV file...");
         
         const csvText = event.target?.result as string;
@@ -83,7 +102,6 @@ export const parseCSV = async (
           return;
         }
         
-        // Split the file into lines and get the header row
         const lines = csvText.split(/\r\n|\n/);
         if (lines.length < 2) {
           reject(new Error("CSV file is empty or has only headers"));
@@ -95,15 +113,12 @@ export const parseCSV = async (
         
         console.log("Processing CSV with headers:", originalHeaders);
         
-        // Map input headers to standard field names
         const headerMap: Record<number, string> = {};
         const missingRequiredHeaders: string[] = [];
         
-        // Track which required fields were found
         const requiredFields = ['user_wallet', 'loan_amount', 'loan_term', 'loan_due_date'];
         const foundRequiredFields = new Set<string>();
         
-        // Build header mapping
         originalHeaders.forEach((header, index) => {
           const standardField = findStandardFieldName(header);
           if (standardField) {
@@ -116,17 +131,14 @@ export const parseCSV = async (
           }
         });
         
-        // Log the header mapping for debugging
         debugHeaderMatching(originalHeaders, headerMap);
         
-        // Check for missing required headers
         requiredFields.forEach(field => {
           if (!foundRequiredFields.has(field)) {
             missingRequiredHeaders.push(field);
           }
         });
         
-        // If all required headers are missing, we can't continue
         if (missingRequiredHeaders.length === requiredFields.length) {
           const errorMsg = `CSV is missing all required fields. Required: ${requiredFields.join(', ')}`;
           console.error(errorMsg);
@@ -138,20 +150,17 @@ export const parseCSV = async (
           return;
         }
         
-        // If some required headers are missing, show warning but continue with available data
         if (missingRequiredHeaders.length > 0) {
           const warningMsg = `Warning: CSV is missing some required fields: ${missingRequiredHeaders.join(', ')}. Processing will continue with available data.`;
           console.warn(warningMsg);
           toast.warning(warningMsg);
         }
         
-        // Progress calculation variables
-        const totalLines = lines.length - 1; // Minus header
+        const totalLines = lines.length - 1;
         let processedLines = 0;
         let invalidRows = 0;
         let validRows = 0;
         
-        // Process data rows
         const loans: LoanData[] = [];
         let hasValidationErrors = false;
         let invalidRowNumbers: number[] = [];
@@ -159,23 +168,20 @@ export const parseCSV = async (
         progressCallback?.(20, "Validating loan data...");
         
         for (let i = 1; i < lines.length; i++) {
-          if (!lines[i].trim()) continue; // Skip empty lines
+          if (!lines[i].trim()) continue;
           
           const values = lines[i].split(',').map(value => value.trim());
           const loan: Record<string, any> = {};
           
-          // Map the values to the corresponding standardized field names
           values.forEach((value, index) => {
             const standardField = headerMap[index];
-            if (!standardField) return; // Skip columns we don't recognize
+            if (!standardField) return;
             
             if (standardField === 'loan_amount' || standardField === 'loan_term') {
               loan[standardField] = parseFloat(value) || 0;
             } else if (standardField === 'loan_repaid_amount') {
-              // Handle potentially missing loan_repaid_amount
               loan[standardField] = value ? parseFloat(value) : null;
             } else if (standardField === 'is_defaulted') {
-              // Convert string "TRUE"/"FALSE" to actual boolean values
               loan[standardField] = value?.toLowerCase() === 'true';
             } else if (
               standardField === 'default_loan_date' || 
@@ -183,26 +189,22 @@ export const parseCSV = async (
               standardField === 'loan_due_date' ||
               standardField === 'time_loan_started'
             ) {
-              // Convert empty strings to null for date fields
-              loan[standardField] = value && value !== "" ? value : null;
+              loan[standardField] = cleanTimestamp(value);
             } else {
               loan[standardField] = value || "";
             }
           });
           
-          // Fill in default values for missing required fields
           requiredFields.forEach(field => {
-            if (!loan[field] && field !== 'user_wallet') { // user_wallet is still required
+            if (!loan[field] && field !== 'user_wallet') {
               if (field === 'loan_amount' || field === 'loan_term') {
                 loan[field] = 0;
-              } else if (field === 'loan_due_date') {
-                // Set a far future date for missing due date
-                loan[field] = new Date(2099, 12, 31).toISOString().split('T')[0];
+              } else if (field === 'loan_due_date' && !loan[field]) {
+                loan[field] = new Date(2099, 12, 31).toISOString();
               }
             }
           });
           
-          // Skip rows missing user_wallet as it's still required
           if (!loan.user_wallet) {
             console.error(`Row ${i} is missing required user_wallet field`);
             hasValidationErrors = true;
@@ -211,7 +213,6 @@ export const parseCSV = async (
             continue;
           }
           
-          // Initialize missing non-required fields
           if (loan.is_defaulted === undefined) loan.is_defaulted = false;
           if (!loan.loan_repaid_amount) loan.loan_repaid_amount = null;
           if (!loan.version) loan.version = "";
@@ -219,7 +220,6 @@ export const parseCSV = async (
           validRows++;
           loans.push(loan as LoanData);
           
-          // Update progress periodically
           processedLines++;
           if (processedLines % Math.max(1, Math.floor(totalLines / 20)) === 0 || 
               processedLines === totalLines) {
@@ -228,7 +228,6 @@ export const parseCSV = async (
           }
         }
         
-        // If we have no valid loans but we have validation errors, reject with specific message
         if (loans.length === 0) {
           if (hasValidationErrors) {
             const errorMsg = `No valid loan data found. ${invalidRows} rows had validation errors.`;
@@ -248,7 +247,6 @@ export const parseCSV = async (
           }
         }
         
-        // If we have some valid data but also validation errors, continue with warning
         if (hasValidationErrors && loans.length > 0) {
           toast.warning(`${invalidRows} rows had validation errors and were skipped.`);
         }
@@ -256,45 +254,36 @@ export const parseCSV = async (
         console.log("Parsed loan data:", loans.length, "loans");
         progressCallback?.(50, "Storing file information...");
         
-        // Record the file upload and store loan data
-        try {
-          // Start file upload tracking
-          const { data: fileUpload, error: fileUploadError } = await storeFileUpload(file.name, loans.length);
-          
-          if (fileUploadError) {
-            console.error("Error storing file upload info:", fileUploadError);
-            toast.error("Error storing file upload information");
-            reject(fileUploadError);
-            return;
-          }
-          
-          progressCallback?.(60, "Uploading loans to database...");
-          
-          // Store loans in Supabase with file upload ID
-          const result = await storeLoansInDatabase(loans, fileUpload.id, progressCallback);
-          
-          if (result.error) {
-            console.error("Error storing loans in database:", result.error);
-            toast.error("Error storing loans in database");
-            reject(result.error);
-            return;
-          }
-          
-          progressCallback?.(95, "Finalizing upload...");
-          
-          console.log("Successfully stored", loans.length, "loans in database");
-          
-          // Return the parsed data with file upload ID
-          const loansWithFileId = loans.map(loan => ({
-            ...loan,
-            file_upload_id: fileUpload.id
-          }));
-          
-          resolve(loansWithFileId);
-        } catch (error) {
-          console.error("Database error:", error);
-          reject(error);
+        const { data: fileUpload, error: fileUploadError } = await storeFileUpload(file.name, loans.length);
+        
+        if (fileUploadError) {
+          console.error("Error storing file upload info:", fileUploadError);
+          toast.error("Error storing file upload information");
+          reject(fileUploadError);
+          return;
         }
+        
+        progressCallback?.(60, "Uploading loans to database...");
+        
+        const result = await storeLoansInDatabase(loans, fileUpload.id, progressCallback);
+        
+        if (result.error) {
+          console.error("Error storing loans in database:", result.error);
+          toast.error("Error storing loans in database");
+          reject(result.error);
+          return;
+        }
+        
+        progressCallback?.(95, "Finalizing upload...");
+        
+        console.log("Successfully stored", loans.length, "loans in database");
+        
+        const loansWithFileId = loans.map(loan => ({
+          ...loan,
+          file_upload_id: fileUpload.id
+        }));
+        
+        resolve(loansWithFileId);
       } catch (error) {
         console.error("Error parsing CSV:", error);
         toast.error("Error parsing CSV file");
@@ -312,7 +301,6 @@ export const parseCSV = async (
   });
 };
 
-// Function to store file upload information
 const storeFileUpload = async (fileName: string, recordCount: number): Promise<{ data: FileUpload, error: any }> => {
   const { data, error } = await supabase
     .from('file_uploads')
@@ -326,28 +314,27 @@ const storeFileUpload = async (fileName: string, recordCount: number): Promise<{
   return { data, error };
 };
 
-// Function to store loans in Supabase with update/insert logic
 const storeLoansInDatabase = async (
   loans: LoanData[], 
   fileUploadId: string,
   progressCallback?: ProgressCallback
 ) => {
-  // Map loan data to match database schema
-  const loansToUpsert = loans.map(loan => ({
-    user_wallet: loan.user_wallet,
-    loan_amount: loan.loan_amount,
-    loan_repaid_amount: loan.loan_repaid_amount,
-    loan_term: loan.loan_term,
-    time_loan_started: loan.time_loan_started,
-    time_loan_ended: loan.time_loan_ended,
-    loan_due_date: loan.loan_due_date,
-    default_loan_date: loan.default_loan_date,
-    is_defaulted: loan.is_defaulted,
-    version: loan.version,
-    file_upload_id: fileUploadId
-  }));
+  const loansToUpsert = loans.map(loan => {
+    return {
+      user_wallet: loan.user_wallet,
+      loan_amount: loan.loan_amount,
+      loan_repaid_amount: loan.loan_repaid_amount,
+      loan_term: loan.loan_term,
+      time_loan_started: loan.time_loan_started || null,
+      time_loan_ended: loan.time_loan_ended || null,
+      loan_due_date: loan.loan_due_date || null,
+      default_loan_date: loan.default_loan_date || null,
+      is_defaulted: loan.is_defaulted,
+      version: loan.version || null,
+      file_upload_id: fileUploadId
+    };
+  });
 
-  // Process loans in batches to avoid request size limitations
   const batchSize = 100;
   const batches = [];
   
@@ -359,14 +346,12 @@ const storeLoansInDatabase = async (
   let processedCount = 0;
   const totalCount = loansToUpsert.length;
 
-  // Process each batch in sequence
   for (const [batchIndex, batch] of batches.entries()) {
     try {
-      // Using the unique constraint we just added for the upsert operation
       const { error: batchError } = await supabase
         .from('loans')
         .upsert(batch, {
-          onConflict: 'user_wallet,loan_amount,loan_due_date', // This will now work with our new constraint
+          onConflict: 'user_wallet,loan_amount,loan_due_date',
           ignoreDuplicates: false
         });
       
@@ -376,7 +361,6 @@ const storeLoansInDatabase = async (
         break;
       }
       
-      // Update progress
       processedCount += batch.length;
       const percent = 60 + Math.floor((processedCount / totalCount) * 30);
       progressCallback?.(percent, `Storing loans in database (${processedCount}/${totalCount})...`);
@@ -391,7 +375,6 @@ const storeLoansInDatabase = async (
   return { error };
 };
 
-// Function to fetch all loans from Supabase
 export const fetchLoansFromDatabase = async (): Promise<LoanData[]> => {
   try {
     const { data, error } = await supabase
@@ -419,7 +402,6 @@ export const fetchLoansFromDatabase = async (): Promise<LoanData[]> => {
   }
 };
 
-// Function to fetch the latest file upload
 export const fetchLatestFileUpload = async (): Promise<FileUpload | null> => {
   try {
     const { data, error } = await supabase
