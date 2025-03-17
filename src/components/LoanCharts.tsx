@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { BarChart, Bar, PieChart, Pie, Cell, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend, CartesianGrid } from 'recharts';
@@ -105,6 +104,42 @@ const LoanCharts = ({ statusData, amountData }: LoanChartsProps) => {
   );
 };
 
+// Custom tooltip component to prevent duplicate entries
+const CustomTooltip = ({ active, payload, label, title }: any) => {
+  if (!active || !payload || !payload.length) return null;
+
+  // Process payload to remove duplicate entries
+  // Create a map to store unique entries by name
+  const uniqueEntries = new Map();
+  
+  payload.forEach((entry: any) => {
+    // Only keep the first occurrence of each name
+    if (!uniqueEntries.has(entry.name)) {
+      uniqueEntries.set(entry.name, entry);
+    }
+  });
+
+  // Convert the Map back to an array
+  const uniquePayload = Array.from(uniqueEntries.values());
+
+  return (
+    <div className="bg-background border border-border/50 rounded-lg p-2 shadow-lg text-xs">
+      {title && <p className="font-medium mb-1">{title}</p>}
+      {label && <p className="text-muted-foreground mb-1">{label}</p>}
+      {uniquePayload.map((entry: any, index: number) => (
+        <div key={`tooltip-item-${index}`} className="flex items-center gap-2">
+          <div 
+            className="w-2 h-2 rounded-sm" 
+            style={{ backgroundColor: entry.color || entry.fill }}
+          />
+          <span className="text-muted-foreground">{entry.name}: </span>
+          <span className="font-medium">{entry.value} loans</span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const StatusBarChart = ({ data }: { data: ChartData[] }) => (
   <ResponsiveContainer width="100%" height="100%">
     <BarChart
@@ -115,7 +150,7 @@ const StatusBarChart = ({ data }: { data: ChartData[] }) => (
       <XAxis dataKey="name" tick={{ fontSize: 12 }} />
       <YAxis tick={{ fontSize: 12 }} />
       <Tooltip 
-        formatter={(value: number) => [`${value} loans`, 'Count']}
+        content={<CustomTooltip />}
         contentStyle={{ borderRadius: '8px' }}
       />
       <Legend />
@@ -151,7 +186,7 @@ const StatusPieChart = ({ data }: { data: ChartData[] }) => (
         ))}
       </Pie>
       <Tooltip 
-        formatter={(value: number) => [`${value} loans`, 'Count']}
+        content={<CustomTooltip />}
         contentStyle={{ borderRadius: '8px' }}
       />
       <Legend />
@@ -169,7 +204,7 @@ const AmountBarChart = ({ data, title }: { data: ChartData[], title: string }) =
       <XAxis dataKey="name" tick={{ fontSize: 12 }} />
       <YAxis tick={{ fontSize: 12 }} />
       <Tooltip 
-        formatter={(value: number) => [`${value} loans`, title]}
+        content={(props) => <CustomTooltip {...props} title={title} />}
         contentStyle={{ borderRadius: '8px' }}
       />
       <Legend />
@@ -205,7 +240,7 @@ const AmountPieChart = ({ data, title }: { data: ChartData[], title: string }) =
         ))}
       </Pie>
       <Tooltip 
-        formatter={(value: number) => [`${value} loans`, title]}
+        content={(props) => <CustomTooltip {...props} title={title} />}
         contentStyle={{ borderRadius: '8px' }}
       />
       <Legend />
