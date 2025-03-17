@@ -1,6 +1,7 @@
+
 import { useState, useRef, DragEvent, ChangeEvent } from 'react';
 import { toast } from 'sonner';
-import { Upload, File, Loader2, AlertCircle, HelpCircle } from 'lucide-react';
+import { Upload, File, Loader2, AlertCircle, HelpCircle, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { parseCSV } from '@/utils/csvParser';
 import { LoanData } from '@/utils/types';
@@ -12,6 +13,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 interface CSVUploaderProps {
   onDataLoaded: (data: LoanData[]) => void;
@@ -123,7 +130,7 @@ const CSVUploader = ({ onDataLoaded, onProgress }: CSVUploaderProps) => {
           errorMessage = 'Processing timed out. Try with a smaller file or try again later.';
         } else if (error.message.includes('required fields')) {
           errorMessage = 'Some rows have missing required fields. Please check your CSV file and ensure all rows have the required fields.';
-        } else if (error.message.includes('required headers')) {
+        } else if (error.message.includes('required headers') || error.message.includes('missing all required fields')) {
           errorMessage = error.message;
         } else {
           errorMessage = error.message;
@@ -143,7 +150,7 @@ const CSVUploader = ({ onDataLoaded, onProgress }: CSVUploaderProps) => {
         <Alert variant="destructive" className="mb-4">
           <AlertCircle className="h-4 w-4" />
           <AlertTitle>Error Processing CSV</AlertTitle>
-          <AlertDescription>{validationError}</AlertDescription>
+          <AlertDescription className="whitespace-pre-line">{validationError}</AlertDescription>
         </Alert>
       )}
       
@@ -227,7 +234,11 @@ const CSVUploader = ({ onDataLoaded, onProgress }: CSVUploaderProps) => {
 
       <div className="mt-6 bg-muted/50 p-4 rounded-lg border border-border">
         <div className="flex justify-between items-center mb-2">
-          <h4 className="text-sm font-medium">CSV Format Guide</h4>
+          <h4 className="text-sm font-medium flex items-center gap-2">
+            <Info className="h-4 w-4 text-primary" />
+            CSV Format Guide
+            <span className="text-xs text-emerald-600 font-normal">Now with flexible column naming!</span>
+          </h4>
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -242,27 +253,111 @@ const CSVUploader = ({ onDataLoaded, onProgress }: CSVUploaderProps) => {
           </TooltipProvider>
         </div>
         
-        <div className="flex gap-1 flex-wrap mt-2">
-          {['user_wallet', 'loan_amount', 'loan_term', 'loan_due_date'].map((field) => (
-            <span key={field} className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary">
-              {field}
-            </span>
-          ))}
-        </div>
-        
-        <p className="text-xs text-muted-foreground mt-2">
-          Additional recommended columns: loan_repaid_amount, time_loan_started, time_loan_ended, default_loan_date, is_defaulted, version
-        </p>
-
-        <div className="mt-3 text-xs text-muted-foreground">
-          <strong>Accepted column variations:</strong>
-          <ul className="mt-1 pl-4 space-y-1 list-disc">
-            <li><span className="font-semibold">user_wallet</span>: wallet, address</li>
-            <li><span className="font-semibold">time_loan_started</span>: date_loan_started, loan_started, start_date</li>
-            <li><span className="font-semibold">time_loan_ended</span>: date_loan_ended, loan_ended, end_date</li>
-            <li><span className="font-semibold">default_loan_date</span>: date_loan_defaulted, defaulted_date</li>
-          </ul>
-        </div>
+        <Accordion type="single" collapsible className="w-full">
+          <AccordionItem value="required">
+            <AccordionTrigger className="text-sm py-2">
+              <span className="flex items-center gap-2">
+                Required Columns
+                <span className="text-xs font-normal bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 px-2 py-0.5 rounded-full">Vital</span>
+              </span>
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="flex gap-1 flex-wrap">
+                {[
+                  { name: 'user_wallet', desc: 'User wallet address' },
+                  { name: 'loan_amount', desc: 'Amount of the loan' },
+                  { name: 'loan_term', desc: 'Duration of the loan' },
+                  { name: 'loan_due_date', desc: 'When the loan is due' }
+                ].map(field => (
+                  <div key={field.name} className="relative group">
+                    <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary">
+                      {field.name}
+                    </span>
+                    <div className="absolute bottom-full mb-2 left-0 transform -translate-x-1/2 invisible group-hover:visible bg-black text-white text-xs rounded p-1 w-auto whitespace-nowrap">
+                      {field.desc}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                These columns are required for basic loan data processing.
+              </p>
+            </AccordionContent>
+          </AccordionItem>
+          
+          <AccordionItem value="recommended">
+            <AccordionTrigger className="text-sm py-2">
+              <span className="flex items-center gap-2">
+                Recommended Columns
+                <span className="text-xs font-normal bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 px-2 py-0.5 rounded-full">Optional</span>
+              </span>
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="flex gap-1 flex-wrap">
+                {[
+                  { name: 'loan_repaid_amount', desc: 'Amount repaid on the loan' },
+                  { name: 'time_loan_started', desc: 'When the loan started' },
+                  { name: 'time_loan_ended', desc: 'When the loan was repaid' },
+                  { name: 'default_loan_date', desc: 'When the loan defaulted' },
+                  { name: 'is_defaulted', desc: 'Whether the loan defaulted' },
+                  { name: 'version', desc: 'Version of the loan' }
+                ].map(field => (
+                  <div key={field.name} className="relative group">
+                    <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                      {field.name}
+                    </span>
+                    <div className="absolute bottom-full mb-2 left-0 transform -translate-x-1/2 invisible group-hover:visible bg-black text-white text-xs rounded p-1 w-auto whitespace-nowrap">
+                      {field.desc}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                These columns provide additional loan information but are not required.
+              </p>
+            </AccordionContent>
+          </AccordionItem>
+          
+          <AccordionItem value="variations">
+            <AccordionTrigger className="text-sm py-2">
+              <span className="flex items-center gap-2">
+                Accepted Column Variations
+                <span className="text-xs font-normal bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-2 py-0.5 rounded-full">Flexible</span>
+              </span>
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                <div>
+                  <h5 className="font-medium mb-1">user_wallet:</h5>
+                  <p className="text-muted-foreground">wallet, address, user wallet, wallet_address</p>
+                </div>
+                <div>
+                  <h5 className="font-medium mb-1">loan_amount:</h5>
+                  <p className="text-muted-foreground">amount, principal, value, loan amount</p>
+                </div>
+                <div>
+                  <h5 className="font-medium mb-1">time_loan_started:</h5>
+                  <p className="text-muted-foreground">date_loan_started, loan_started, start_date, inception_date</p>
+                </div>
+                <div>
+                  <h5 className="font-medium mb-1">time_loan_ended:</h5>
+                  <p className="text-muted-foreground">date_loan_ended, loan_ended, end_date, repayment_date</p>
+                </div>
+                <div>
+                  <h5 className="font-medium mb-1">default_loan_date:</h5>
+                  <p className="text-muted-foreground">date_loan_defaulted, defaulted_date, default_date</p>
+                </div>
+                <div>
+                  <h5 className="font-medium mb-1">is_defaulted:</h5>
+                  <p className="text-muted-foreground">defaulted, default, has_defaulted, in_default</p>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-3">
+                The system will recognize these variations automatically. No need to rename columns!
+              </p>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
 
         <div className="mt-3 text-xs text-muted-foreground">
           <strong>Example CSV first line:</strong><br />

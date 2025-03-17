@@ -6,36 +6,62 @@ import { supabase } from "@/integrations/supabase/client";
 // Type for progress callback
 type ProgressCallback = (percent: number, message: string) => void;
 
-// Column name mapping to handle variations
+// Enhanced column name mapping to handle more variations
 const COLUMN_MAPPINGS: Record<string, string[]> = {
-  user_wallet: ['user_wallet', 'wallet', 'user wallet', 'address'],
-  loan_amount: ['loan_amount', 'amount', 'loan amount'],
-  loan_term: ['loan_term', 'term', 'duration'],
-  loan_due_date: ['loan_due_date', 'due_date', 'due date', 'maturity_date'],
-  loan_repaid_amount: ['loan_repaid_amount', 'repaid_amount', 'repaid amount'],
-  time_loan_started: ['time_loan_started', 'date_loan_started', 'loan_started', 'start_date'],
-  time_loan_ended: ['time_loan_ended', 'date_loan_ended', 'loan_ended', 'end_date'],
-  default_loan_date: ['default_loan_date', 'date_loan_defaulted', 'defaulted_date', 'default_date'],
-  is_defaulted: ['is_defaulted', 'defaulted', 'is defaulted'],
-  version: ['version']
+  user_wallet: ['user_wallet', 'wallet', 'user wallet', 'address', 'wallet_address', 'user_address', 'wallet address'],
+  loan_amount: ['loan_amount', 'amount', 'loan amount', 'principal', 'loan_principal', 'loan principal', 'value'],
+  loan_term: ['loan_term', 'term', 'duration', 'period', 'loan_duration', 'loan duration', 'days', 'loan_days'],
+  loan_due_date: ['loan_due_date', 'due_date', 'due date', 'maturity_date', 'maturity date', 'expiry_date', 'expiry date'],
+  loan_repaid_amount: ['loan_repaid_amount', 'repaid_amount', 'repaid amount', 'paid_amount', 'paid amount', 'repayment', 'paid'],
+  time_loan_started: ['time_loan_started', 'date_loan_started', 'loan_started', 'start_date', 'started', 'inception_date', 'inception', 'origination_date'],
+  time_loan_ended: ['time_loan_ended', 'date_loan_ended', 'loan_ended', 'end_date', 'ended', 'termination_date', 'repayment_date', 'completion_date'],
+  default_loan_date: ['default_loan_date', 'date_loan_defaulted', 'defaulted_date', 'default_date', 'loan_defaulted', 'defaulted at', 'default_time'],
+  is_defaulted: ['is_defaulted', 'defaulted', 'is defaulted', 'default', 'loan_defaulted', 'has_defaulted', 'in_default'],
+  version: ['version', 'ver', 'loan_version', 'loan version', 'v']
 };
 
-// Normalize header name by removing spaces, lowercasing, and handling special characters
+// Debug helper to log matching process
+const debugHeaderMatching = (originalHeaders: string[], headerMap: Record<number, string>) => {
+  console.log("CSV Header Debug:");
+  console.log("Original headers:", originalHeaders);
+  console.log("Mapped headers:", headerMap);
+  
+  const unmatchedHeaders = originalHeaders.filter((_, index) => !headerMap[index]);
+  console.log("Unmatched headers:", unmatchedHeaders.length > 0 ? unmatchedHeaders : "None");
+  
+  const matchedFields = Object.values(headerMap);
+  console.log("Required fields found:", 
+    ['user_wallet', 'loan_amount', 'loan_term', 'loan_due_date'].map(field => 
+      `${field}: ${matchedFields.includes(field) ? 'YES' : 'NO'}`
+    )
+  );
+};
+
+// Normalize header name by removing spaces, special chars, and lowercasing
 const normalizeHeaderName = (header: string): string => {
-  return header.toLowerCase().trim().replace(/\s+/g, '_');
+  return header.toLowerCase()
+    .trim()
+    .replace(/[\s_-]+/g, '_')  // Replace spaces, underscores, hyphens with single underscore
+    .replace(/[^\w]/g, '');    // Remove any non-word characters
 };
 
 // Find the standardized field name based on various possible input names
 const findStandardFieldName = (header: string): string | null => {
   const normalizedHeader = normalizeHeaderName(header);
   
+  // Debug header normalization
+  console.log(`Normalizing header: "${header}" -> "${normalizedHeader}"`);
+  
   for (const [standardField, variations] of Object.entries(COLUMN_MAPPINGS)) {
     const normalizedVariations = variations.map(v => normalizeHeaderName(v));
     if (normalizedVariations.includes(normalizedHeader)) {
+      console.log(`Matched header "${header}" to standard field "${standardField}"`);
       return standardField;
     }
   }
   
+  // No match found
+  console.log(`No match found for header: "${header}"`);
   return null;
 };
 
@@ -68,6 +94,8 @@ export const parseCSV = async (
         const headerRow = lines[0];
         const originalHeaders = headerRow.split(',').map(header => header.trim());
         
+        console.log("Processing CSV with headers:", originalHeaders);
+        
         // Map input headers to standard field names
         const headerMap: Record<number, string> = {};
         const missingRequiredHeaders: string[] = [];
@@ -84,8 +112,13 @@ export const parseCSV = async (
             if (requiredFields.includes(standardField)) {
               foundRequiredFields.add(standardField);
             }
+          } else {
+            console.warn(`Unrecognized header: "${header}"`);
           }
         });
+        
+        // Log the header mapping for debugging
+        debugHeaderMatching(originalHeaders, headerMap);
         
         // Check for missing required headers
         requiredFields.forEach(field => {
@@ -96,15 +129,19 @@ export const parseCSV = async (
         
         // If all required headers are missing, we can't continue
         if (missingRequiredHeaders.length === requiredFields.length) {
-          const errorMsg = `Error: CSV is missing all required headers: ${missingRequiredHeaders.join(', ')}`;
+          const errorMsg = `CSV is missing all required fields. Required: ${requiredFields.join(', ')}`;
           console.error(errorMsg);
-          reject(new Error(errorMsg));
+          
+          const foundHeaders = Object.values(headerMap).join(', ');
+          const detailedError = `${errorMsg}\n\nFound fields: ${foundHeaders || 'None'}\n\nPlease ensure your CSV contains the required columns or their variations.`;
+          
+          reject(new Error(detailedError));
           return;
         }
         
         // If some required headers are missing, show warning but continue with available data
         if (missingRequiredHeaders.length > 0) {
-          const warningMsg = `Warning: CSV is missing some required headers: ${missingRequiredHeaders.join(', ')}. Processing will continue with available data.`;
+          const warningMsg = `Warning: CSV is missing some required fields: ${missingRequiredHeaders.join(', ')}. Processing will continue with available data.`;
           console.warn(warningMsg);
           toast.warning(warningMsg);
         }
@@ -176,7 +213,7 @@ export const parseCSV = async (
           }
           
           // Initialize missing non-required fields
-          if (!loan.is_defaulted) loan.is_defaulted = false;
+          if (loan.is_defaulted === undefined) loan.is_defaulted = false;
           if (!loan.loan_repaid_amount) loan.loan_repaid_amount = null;
           if (!loan.version) loan.version = "";
           
