@@ -1,4 +1,3 @@
-
 import { LoanData, FileUpload } from "./types";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -363,11 +362,11 @@ const storeLoansInDatabase = async (
   // Process each batch in sequence
   for (const [batchIndex, batch] of batches.entries()) {
     try {
-      // Batch upsert approach
+      // Using the unique constraint we just added for the upsert operation
       const { error: batchError } = await supabase
         .from('loans')
         .upsert(batch, {
-          onConflict: 'user_wallet,loan_amount,loan_due_date',
+          onConflict: 'user_wallet,loan_amount,loan_due_date', // This will now work with our new constraint
           ignoreDuplicates: false
         });
       
