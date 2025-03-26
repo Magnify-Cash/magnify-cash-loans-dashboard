@@ -13,13 +13,19 @@ const LoanBreakdown = ({ metrics }: LoanBreakdownProps) => {
       title: "$1 Loans",
       data: metrics.oneDollarLoans,
       total: metrics.oneDollarLoans.total,
-      repaidAmount: 1.025
+      repaidAmount: 1.025,
+      defaultRate: metrics.oneDollarLoans.total > 0 
+        ? ((metrics.oneDollarLoans.defaulted / metrics.oneDollarLoans.total) * 100).toFixed(1)
+        : "0.0"
     },
     {
       title: "$10 Loans",
       data: metrics.tenDollarLoans,
       total: metrics.tenDollarLoans.total,
-      repaidAmount: 10.15
+      repaidAmount: 10.15,
+      defaultRate: metrics.tenDollarLoans.total > 0 
+        ? ((metrics.tenDollarLoans.defaulted / metrics.tenDollarLoans.total) * 100).toFixed(1)
+        : "0.0"
     }
   ];
 
@@ -103,6 +109,9 @@ const LoanBreakdown = ({ metrics }: LoanBreakdownProps) => {
                   <span className="text-muted-foreground">Defaulted</span>
                 </div>
                 <p className="font-medium">{category.data.defaulted}</p>
+                <p className="text-xs text-muted-foreground">
+                  {category.defaultRate}% default rate
+                </p>
               </div>
             </div>
           </motion.div>
