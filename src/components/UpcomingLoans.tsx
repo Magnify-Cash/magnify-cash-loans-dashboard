@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Clock, ChevronDown, ChevronUp } from 'lucide-react';
+import { Clock, ChevronDown, ChevronUp, History } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DueDateGroup, LoanData } from '@/utils/types';
 import { formatCurrency, formatDate, getDaysRemaining } from '@/utils/loanCalculations';
@@ -11,18 +11,37 @@ interface UpcomingLoansProps {
 }
 
 const UpcomingLoans = ({ dueDateGroups }: UpcomingLoansProps) => {
+  const [showExpired, setShowExpired] = useState(false);
+  
+  // Get expired loans (due date in the past)
+  const expiredLoans = dueDateGroups
+    .flatMap(group => group.loans)
+    .filter(loan => {
+      const dueDate = new Date(loan.loan_due_date);
+      return dueDate < new Date() && !loan.is_defaulted;
+    });
+
   return (
     <div className="glass-card rounded-xl p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-lg font-medium">Upcoming Repayments</h2>
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Clock size={16} />
-          <span className="text-sm">By due date</span>
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => setShowExpired(!showExpired)}
+            className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors"
+          >
+            <History size={16} />
+            <span className="text-sm">Show expired</span>
+          </button>
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Clock size={16} />
+            <span className="text-sm">By due date</span>
+          </div>
         </div>
       </div>
       
-      <Tabs defaultValue="1">
-        <TabsList className="grid grid-cols-6 mb-6">
+      <Tabs defaultValue={showExpired ? "expired" : "1"}>
+        <TabsList className="grid grid-cols-7 mb-6">
           {dueDateGroups.map((group) => (
             <TabsTrigger
               key={group.days}
@@ -37,6 +56,17 @@ const UpcomingLoans = ({ dueDateGroups }: UpcomingLoansProps) => {
               )}
             </TabsTrigger>
           ))}
+          <TabsTrigger
+            value="expired"
+            className="relative"
+          >
+            <span className="mr-1">Expired</span>
+            {expiredLoans.length > 0 && (
+              <span className="absolute -top-1 -right-1 flex items-center justify-center w-5 h-5 text-xs bg-amber-500 text-white rounded-full">
+                {expiredLoans.length}
+              </span>
+            )}
+          </TabsTrigger>
         </TabsList>
         
         {dueDateGroups.map((group) => (
@@ -44,6 +74,10 @@ const UpcomingLoans = ({ dueDateGroups }: UpcomingLoansProps) => {
             <LoanTable loans={group.loans} />
           </TabsContent>
         ))}
+        
+        <TabsContent value="expired">
+          <LoanTable loans={expiredLoans} />
+        </TabsContent>
       </Tabs>
     </div>
   );
