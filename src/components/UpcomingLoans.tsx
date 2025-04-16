@@ -11,7 +11,7 @@ interface UpcomingLoansProps {
 }
 
 const UpcomingLoans = ({ dueDateGroups }: UpcomingLoansProps) => {
-  const [showExpired, setShowExpired] = useState(false);
+  const [activeTab, setActiveTab] = useState("1");
   
   // Get expired loans (due date in the past)
   const expiredLoans = dueDateGroups
@@ -21,13 +21,18 @@ const UpcomingLoans = ({ dueDateGroups }: UpcomingLoansProps) => {
       return dueDate < new Date() && !loan.is_defaulted;
     });
 
+  // Function to show expired loans tab
+  const showExpiredTab = () => {
+    setActiveTab("expired");
+  };
+
   return (
     <div className="glass-card rounded-xl p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-lg font-medium">Upcoming Repayments</h2>
         <div className="flex items-center gap-4">
           <button 
-            onClick={() => setShowExpired(!showExpired)}
+            onClick={showExpiredTab}
             className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors"
           >
             <History size={16} />
@@ -40,7 +45,7 @@ const UpcomingLoans = ({ dueDateGroups }: UpcomingLoansProps) => {
         </div>
       </div>
       
-      <Tabs defaultValue={showExpired ? "expired" : "1"}>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid grid-cols-7 mb-6">
           {dueDateGroups.map((group) => (
             <TabsTrigger
