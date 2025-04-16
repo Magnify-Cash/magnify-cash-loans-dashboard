@@ -4,22 +4,23 @@ import { motion } from 'framer-motion';
 import { Clock, ChevronDown, ChevronUp, History } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DueDateGroup, LoanData } from '@/utils/types';
-import { formatCurrency, formatDate, getDaysRemaining } from '@/utils/loanCalculations';
+import { 
+  formatCurrency, 
+  formatDate, 
+  getDaysRemaining, 
+  getExpiredLoans 
+} from '@/utils/loanCalculations';
 
 interface UpcomingLoansProps {
   dueDateGroups: DueDateGroup[];
+  loans: LoanData[]; // Full loans collection for expired calculation
 }
 
-const UpcomingLoans = ({ dueDateGroups }: UpcomingLoansProps) => {
+const UpcomingLoans = ({ dueDateGroups, loans }: UpcomingLoansProps) => {
   const [activeTab, setActiveTab] = useState("1");
   
-  // Get expired loans (due date in the past)
-  const expiredLoans = dueDateGroups
-    .flatMap(group => group.loans)
-    .filter(loan => {
-      const dueDate = new Date(loan.loan_due_date);
-      return dueDate < new Date() && !loan.is_defaulted;
-    });
+  // Get expired loans using the dedicated function
+  const expiredLoans = getExpiredLoans(loans);
 
   // Function to show expired loans tab
   const showExpiredTab = () => {
@@ -37,6 +38,11 @@ const UpcomingLoans = ({ dueDateGroups }: UpcomingLoansProps) => {
           >
             <History size={16} />
             <span className="text-sm">Show expired</span>
+            {expiredLoans.length > 0 && (
+              <span className="flex items-center justify-center w-5 h-5 text-xs bg-amber-500 text-white rounded-full">
+                {expiredLoans.length}
+              </span>
+            )}
           </button>
           <div className="flex items-center gap-2 text-muted-foreground">
             <Clock size={16} />

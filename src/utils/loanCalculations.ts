@@ -1,4 +1,3 @@
-
 import { LoanData, DueDateGroup, LoanMetrics, ChartData } from './types';
 
 export function groupLoansByDueDate(loans: LoanData[]): DueDateGroup[] {
@@ -15,15 +14,15 @@ export function groupLoansByDueDate(loans: LoanData[]): DueDateGroup[] {
     { label: "Due in 30 days", days: 30, count: 0, loans: [] }
   ];
   
-  // Only process non-defaulted and not fully repaid loans
+  // Only process non-defaulted and not fully repaid loans that are due in the future
   const activeLoans = loans.filter(loan => {
     if (loan.is_defaulted || loan.default_loan_date) return false;
     
     const dueDate = new Date(loan.loan_due_date);
-    const isDueDateInPastOrToday = !isNaN(dueDate.getTime()) && dueDate >= today;
+    const isDueDateInFuture = !isNaN(dueDate.getTime()) && dueDate > today;
     const isMissingRepaidAmount = loan.loan_repaid_amount === undefined || loan.loan_repaid_amount === null;
     
-    return isDueDateInPastOrToday && (isMissingRepaidAmount || loan.loan_repaid_amount < loan.loan_amount);
+    return isDueDateInFuture && (isMissingRepaidAmount || loan.loan_repaid_amount < loan.loan_amount);
   });
   
   activeLoans.forEach(loan => {
@@ -53,6 +52,24 @@ export function groupLoansByDueDate(loans: LoanData[]): DueDateGroup[] {
   });
   
   return dueGroups;
+}
+
+export function getExpiredLoans(loans: LoanData[]): LoanData[] {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  // Get loans where the due date is in the past (before today)
+  return loans.filter(loan => {
+    if (loan.is_defaulted || loan.default_loan_date) return false;
+    
+    const dueDate = new Date(loan.loan_due_date);
+    const isDueDateInPast = !isNaN(dueDate.getTime()) && dueDate < today;
+    const notFullyRepaid = loan.loan_repaid_amount === undefined || 
+                           loan.loan_repaid_amount === null || 
+                           loan.loan_repaid_amount < loan.loan_amount;
+    
+    return isDueDateInPast && notFullyRepaid;
+  });
 }
 
 export function calculateLoanMetrics(loans: LoanData[]): LoanMetrics {
