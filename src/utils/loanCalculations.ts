@@ -1,4 +1,3 @@
-
 import { LoanData, DueDateGroup, LoanMetrics, ChartData } from './types';
 
 export function groupLoansByDueDate(loans: LoanData[]): DueDateGroup[] {
@@ -64,12 +63,19 @@ export function getExpiredLoans(loans: LoanData[]): LoanData[] {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
-  // Get loans where the due date is in the past (before today)
+  // Filter for loans where:
+  // 1. The due date is in the past (before today)
+  // 2. The loan is not marked as defaulted
+  // 3. The loan is not fully repaid
   return loans.filter(loan => {
-    if (loan.is_defaulted || loan.default_loan_date) return false;
+    if (!loan || loan.is_defaulted || loan.default_loan_date) return false;
     
     const dueDate = new Date(loan.loan_due_date);
+    
+    // Check if due date is valid and in the past
     const isDueDateInPast = !isNaN(dueDate.getTime()) && dueDate < today;
+    
+    // Check if loan is not fully repaid
     const notFullyRepaid = loan.loan_repaid_amount === undefined || 
                            loan.loan_repaid_amount === null || 
                            loan.loan_repaid_amount < loan.loan_amount;

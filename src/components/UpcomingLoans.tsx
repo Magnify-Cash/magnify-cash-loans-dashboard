@@ -1,7 +1,6 @@
-
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Clock, ChevronDown, ChevronUp, History } from 'lucide-react';
+import { Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DueDateGroup, LoanData } from '@/utils/types';
 import { 
@@ -22,32 +21,13 @@ const UpcomingLoans = ({ dueDateGroups, loans }: UpcomingLoansProps) => {
   // Get expired loans using the dedicated function, ensuring loans is defined
   const expiredLoans = Array.isArray(loans) ? getExpiredLoans(loans) : [];
 
-  // Function to show expired loans tab
-  const showExpiredTab = () => {
-    setActiveTab("expired");
-  };
-
   return (
     <div className="glass-card rounded-xl p-6">
       <div className="flex items-center justify-between mb-6">
         <h2 className="text-lg font-medium">Upcoming Repayments</h2>
-        <div className="flex items-center gap-4">
-          <button 
-            onClick={showExpiredTab}
-            className="flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors"
-          >
-            <History size={16} />
-            <span className="text-sm">Show expired</span>
-            {expiredLoans.length > 0 && (
-              <span className="flex items-center justify-center w-5 h-5 text-xs bg-amber-500 text-white rounded-full">
-                {expiredLoans.length}
-              </span>
-            )}
-          </button>
-          <div className="flex items-center gap-2 text-muted-foreground">
-            <Clock size={16} />
-            <span className="text-sm">By due date</span>
-          </div>
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <Clock size={16} />
+          <span className="text-sm">By due date</span>
         </div>
       </div>
       
