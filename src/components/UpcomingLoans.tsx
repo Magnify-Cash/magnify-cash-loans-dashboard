@@ -19,8 +19,8 @@ interface UpcomingLoansProps {
 const UpcomingLoans = ({ dueDateGroups, loans }: UpcomingLoansProps) => {
   const [activeTab, setActiveTab] = useState("1");
   
-  // Get expired loans using the dedicated function
-  const expiredLoans = getExpiredLoans(loans);
+  // Get expired loans using the dedicated function, ensuring loans is defined
+  const expiredLoans = Array.isArray(loans) ? getExpiredLoans(loans) : [];
 
   // Function to show expired loans tab
   const showExpiredTab = () => {

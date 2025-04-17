@@ -1,3 +1,4 @@
+
 import { LoanData, DueDateGroup, LoanMetrics, ChartData } from './types';
 
 export function groupLoansByDueDate(loans: LoanData[]): DueDateGroup[] {
@@ -55,6 +56,11 @@ export function groupLoansByDueDate(loans: LoanData[]): DueDateGroup[] {
 }
 
 export function getExpiredLoans(loans: LoanData[]): LoanData[] {
+  if (!loans || !Array.isArray(loans)) {
+    console.warn("getExpiredLoans received invalid loans data:", loans);
+    return [];
+  }
+  
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   

@@ -222,7 +222,10 @@ const Dashboard = ({ data }: DashboardProps) => {
           </div>
           
           <div className="mb-8">
-            <UpcomingLoans dueDateGroups={dueDateGroups} />
+            <UpcomingLoans 
+              dueDateGroups={dueDateGroups} 
+              loans={data} 
+            />
           </div>
         </motion.div>
       )}
