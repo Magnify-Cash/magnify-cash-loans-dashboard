@@ -63,11 +63,13 @@ export function getExpiredLoans(loans: LoanData[]): LoanData[] {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
+  console.log("Total loans to check for expiration:", loans.length);
+  
   // Filter for loans where:
   // 1. The due date is in the past (before today)
   // 2. The loan is not marked as defaulted
   // 3. The loan is not fully repaid
-  return loans.filter(loan => {
+  const expiredLoans = loans.filter(loan => {
     if (!loan || loan.is_defaulted || loan.default_loan_date) return false;
     
     const dueDate = new Date(loan.loan_due_date);
@@ -80,8 +82,28 @@ export function getExpiredLoans(loans: LoanData[]): LoanData[] {
                            loan.loan_repaid_amount === null || 
                            loan.loan_repaid_amount < loan.loan_amount;
     
-    return isDueDateInPast && notFullyRepaid;
+    const isExpired = isDueDateInPast && notFullyRepaid;
+    
+    if (isDueDateInPast) {
+      console.log("Found expired loan:", {
+        dueDate: loan.loan_due_date,
+        amount: loan.loan_amount,
+        repaid: loan.loan_repaid_amount,
+        isPast: isDueDateInPast,
+        isNotFullyRepaid: notFullyRepaid,
+        isExpired: isExpired
+      });
+    }
+    
+    return isExpired;
   });
+  
+  console.log("Total expired loans found:", expiredLoans.length);
+  
+  // Sort expired loans by due date (oldest first)
+  return expiredLoans.sort((a, b) => 
+    new Date(a.loan_due_date).getTime() - new Date(b.loan_due_date).getTime()
+  );
 }
 
 export function calculateLoanMetrics(loans: LoanData[]): LoanMetrics {
