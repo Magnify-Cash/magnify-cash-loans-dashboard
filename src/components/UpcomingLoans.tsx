@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Clock, ChevronDown, ChevronUp } from 'lucide-react';
@@ -21,6 +22,10 @@ const UpcomingLoans = ({ dueDateGroups, loans }: UpcomingLoansProps) => {
   // Get expired loans using the dedicated function, ensuring loans is defined
   const expiredLoans = Array.isArray(loans) ? getExpiredLoans(loans) : [];
 
+  // Tab values (use group.days as string, but special-case >30 days)
+  // Find the >30 day group index
+  const moreThan30Group = dueDateGroups.find(group => group.days === Infinity);
+
   return (
     <div className="glass-card rounded-xl p-6">
       <div className="flex items-center justify-between mb-6">
@@ -32,8 +37,8 @@ const UpcomingLoans = ({ dueDateGroups, loans }: UpcomingLoansProps) => {
       </div>
       
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid grid-cols-7 mb-6">
-          {dueDateGroups.map((group) => (
+        <TabsList className="grid grid-cols-8 mb-6">
+          {dueDateGroups.slice(0, 6).map((group) => (
             <TabsTrigger
               key={group.days}
               value={group.days.toString()}
@@ -47,6 +52,20 @@ const UpcomingLoans = ({ dueDateGroups, loans }: UpcomingLoansProps) => {
               )}
             </TabsTrigger>
           ))}
+          {moreThan30Group && (
+            <TabsTrigger
+              key="moreThan30"
+              value="moreThan30"
+              className="relative"
+            >
+              <span className="mr-1">30+d</span>
+              {moreThan30Group.count > 0 && (
+                <span className="absolute -top-1 -right-1 flex items-center justify-center w-5 h-5 text-xs bg-fuchsia-600 text-white rounded-full">
+                  {moreThan30Group.count}
+                </span>
+              )}
+            </TabsTrigger>
+          )}
           <TabsTrigger
             value="expired"
             className="relative"
@@ -60,11 +79,17 @@ const UpcomingLoans = ({ dueDateGroups, loans }: UpcomingLoansProps) => {
           </TabsTrigger>
         </TabsList>
         
-        {dueDateGroups.map((group) => (
+        {dueDateGroups.slice(0, 6).map((group) => (
           <TabsContent key={group.days} value={group.days.toString()}>
             <LoanTable loans={group.loans} />
           </TabsContent>
         ))}
+
+        {moreThan30Group && (
+          <TabsContent value="moreThan30">
+            <LoanTable loans={moreThan30Group.loans} />
+          </TabsContent>
+        )}
         
         <TabsContent value="expired">
           <LoanTable loans={expiredLoans} />
@@ -235,3 +260,5 @@ const LoanTable = ({ loans }: LoanTableProps) => {
 };
 
 export default UpcomingLoans;
+
+// NOTE: This file is now getting quite long. Consider splitting components and helpers into smaller files for maintainability.
